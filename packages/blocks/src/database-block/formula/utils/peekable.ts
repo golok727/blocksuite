@@ -50,10 +50,8 @@ export class PeekableIterator<Item> {
    * Skips a n number of items
    */
   skip(n: number) {
-    while (n !== 0 && !!this.peeked.done) {
-      n--;
-      this.next();
-    }
+    while (n-- > 0 && !this.done()) this.next();
+
     return this;
   }
 

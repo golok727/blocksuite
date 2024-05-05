@@ -1,7 +1,7 @@
 import { EOF_CHAR } from './constants.js';
-import { PeekableIterator } from './utils/peekable.js';
+import { PeekableIterator } from './utils/index.js';
 
-export class Lexer {
+export class Cursor {
   private chars: PeekableIterator<string>;
   private remainingTokens: number;
 

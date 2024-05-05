@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { PeekableIterator } from '../../database-block/formula/utils/peekable.js';
+import { PeekableIterator } from '../../../database-block/formula/utils/peekable.js';
 
 describe('peekable test', () => {
   const values = [1, 2, 3, 4, 5, 6, 7];
@@ -15,18 +15,18 @@ describe('peekable test', () => {
   test('can iterate till end', () => {
     const iter = new PeekableIterator(values);
     const res: number[] = [];
-    while (iter.done()) {
+    while (!iter.done()) {
       res.push(iter.next()!);
     }
     expect(values).toEqual(res);
   });
 
-  test('hasNext()', () => {
+  test('done()', () => {
     const iter = new PeekableIterator([1, 2]);
-    expect(iter.done()).toBe(true);
-    iter.next();
-    iter.next();
     expect(iter.done()).toBe(false);
+    iter.next();
+    iter.next();
+    expect(iter.done()).toBe(true);
   });
 
   test('remaining', () => {
@@ -101,7 +101,6 @@ describe('peekable test', () => {
 
   test('skip n items', () => {
     const iter = new PeekableIterator([1, 2, 3, 4]);
-    iter.skip(3);
-    expect(iter.peek()).toBe(4);
+    expect(iter.skip(3).peek()).toBe(4);
   });
 });
