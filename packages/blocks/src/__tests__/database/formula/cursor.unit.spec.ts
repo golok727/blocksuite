@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
-import { Cursor } from '../../../database-block/formula/cursor.js';
 import { SrcSpan } from '../../../database-block/formula/span.js';
+import { Cursor } from '../../../database-block/formula/utils/cursor.js';
 
 describe('Cursor simple test', () => {
   test('Peeking', () => {

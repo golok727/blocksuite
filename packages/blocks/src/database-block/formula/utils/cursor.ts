@@ -1,5 +1,5 @@
-import { EOF_CHAR } from './constants.js';
-import { Peekable } from './utils/index.js';
+import { EOF_CHAR } from '../constants.js';
+import { Peekable } from './index.js';
 
 /**
  * Represents a cursor for traversing a source string character by character.
