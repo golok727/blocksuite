@@ -8,3 +8,7 @@ export class SrcSpan {
     return index >= this.start && index <= this.end;
   }
 }
+
+export function Span(start: number, end: number) {
+  return new SrcSpan(start, end);
+}

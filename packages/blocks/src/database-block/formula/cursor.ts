@@ -1,46 +1,49 @@
 import { EOF_CHAR } from './constants.js';
-import { PeekableIterator } from './utils/index.js';
+import { Peekable } from './utils/index.js';
 
+/**
+ * Represents a cursor for traversing a source string character by character.
+ */
 export class Cursor {
-  private chars: PeekableIterator<string>;
-  private remainingTokens: number;
+  private chars: Peekable<string>;
+  private tokensToEat: number;
 
   constructor(public readonly source: string) {
-    this.chars = new PeekableIterator(source.split(''));
-    this.remainingTokens = this.chars.length;
+    this.chars = new Peekable(source.split(''));
+    this.tokensToEat = this.chars.remaining;
   }
 
   get range() {
-    return this.remainingTokens - this.chars.length;
+    return this.tokensToEat - this.chars.remaining;
   }
 
   resetRange() {
-    this.remainingTokens = this.chars.length;
+    this.tokensToEat = this.chars.remaining;
   }
 
-  peek(): string {
+  peekNext(): string {
     return this.chars.peek() ?? EOF_CHAR;
   }
 
-  peek2(): string {
+  peekNext2(): string {
     const iter = this.chars.clone();
     iter.next();
-    return iter.next() ?? EOF_CHAR;
+    return iter.peek() ?? EOF_CHAR;
   }
 
-  peek3(): string {
+  peekNext3(): string {
     const iter = this.chars.clone();
     iter.next();
     iter.next();
-    return iter.next() ?? EOF_CHAR;
+    return iter.peek() ?? EOF_CHAR;
   }
 
-  advance() {
-    return this.chars.next();
+  eat() {
+    return this.chars.next() ?? EOF_CHAR;
   }
 
   eatWhile(f: (s: string) => boolean) {
-    while (!this.isEOF() && f(this.peek())) {
+    while (!this.isEOF() && f(this.peekNext())) {
       this.chars.next();
     }
   }

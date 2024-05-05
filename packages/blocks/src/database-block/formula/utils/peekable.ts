@@ -1,31 +1,23 @@
-export interface Peekable<Item> {
-  peekable: () => PeekableIterator<Item>;
-}
-
-/**
- * Adds a peekable method to the given iterable
- */
-export function Peekable<T, Item>(iterable: T & Iterable<Item>) {
-  return Object.assign(iterable, {
-    peekable: function (this) {
-      return new PeekableIterator(iterable);
-    },
-  } as Peekable<Item>);
-}
-
 /**
  * An iterator with a `peek()` method which returns a reference to the next element without advancing the iterator
  */
-export class PeekableIterator<Item> {
+export class Peekable<Item> implements Iterable<Item> {
+  [Symbol.iterator]!: () => Iterator<Item>;
+
   static readonly symbol = Symbol('peekable');
 
   private iterator: Iterator<Item>;
   private peeked: IteratorResult<Item>;
-  private remaining;
+
+  private _length: number;
+  private _remaining: number;
 
   constructor(iterable: Iterable<Item>) {
-    this.remaining = Array.from(iterable).length;
-    this.iterator = iterable[Symbol.iterator]();
+    this[Symbol.iterator] = iterable[Symbol.iterator].bind(iterable);
+
+    this._remaining = this._length = getIterableLength(iterable);
+
+    this.iterator = this[Symbol.iterator]();
     this.peeked = this.iterator.next();
   }
 
@@ -42,7 +34,7 @@ export class PeekableIterator<Item> {
   next(): Item | undefined {
     const peeked = this.peeked;
     this.peeked = this.iterator.next();
-    if (!peeked.done) this.remaining--;
+    if (!peeked.done) this._remaining--;
     return peeked.value;
   }
 
@@ -65,22 +57,22 @@ export class PeekableIterator<Item> {
   /**
    * Returns the number of remaining items
    */
-  get length() {
-    return this.remaining;
+  get remaining() {
+    return this._remaining;
   }
 
   /**
    * Calls a defined callback function on the remaining items of the peekable, and returns a new peekable based on the new result.
    */
-  map<R>(mapper: (value: Item, index: number) => R): PeekableIterator<R> {
-    return new PeekableIterator(this.toArray().map(mapper));
+  map<R>(mapper: (value: Item, index: number) => R): Peekable<R> {
+    return new Peekable(this.toArray().map(mapper));
   }
 
   /**
    * Returns the new Peekable with items that meet the condition specified in a callback function.
    */
-  filter(f: (value: Item, index: number) => boolean): PeekableIterator<Item> {
-    return new PeekableIterator(this.toArray().filter(f));
+  filter(f: (value: Item, index: number) => boolean): Peekable<Item> {
+    return new Peekable(this.toArray().filter(f));
   }
 
   /**
@@ -93,27 +85,33 @@ export class PeekableIterator<Item> {
   /**
    * Return a new iterator from the remaining items in the iterator
    */
-  clone(): PeekableIterator<Item> {
-    const peekable = new PeekableIterator<Item>([]);
-    peekable.remaining = this.remaining;
-    peekable.peeked = { ...this.peeked };
-
-    const iterator: Iterator<Item> = {
-      next: () => this.iterator.next(),
-    };
-    peekable.iterator = iterator;
-    return peekable;
+  clone(): Peekable<Item> {
+    // not using array.from to avoid unnecessary clones
+    let n = this._length - this.remaining;
+    const peek = new Peekable<Item>(this);
+    peek._remaining = this._remaining;
+    peek._length = this._remaining;
+    while (n--) {
+      peek.next();
+    }
+    return peek;
   }
 
   /**
    * Returns an array of remaining items in the iterator
    */
   toArray() {
-    const arr: Item[] = [];
+    const res: Item[] = [];
     const clone = this.clone();
-    while (!clone.peeked.done) {
-      arr.push(clone.next()!);
+    while (!clone.done()) {
+      res.push(clone.next()!);
     }
-    return arr;
+    return res;
   }
+}
+
+function getIterableLength(iterable: Iterable<unknown>) {
+  let len = 0;
+  for (const _ of iterable) len++;
+  return len;
 }
