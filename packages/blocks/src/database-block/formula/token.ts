@@ -1,9 +1,9 @@
 import { type SrcSpan } from './span.js';
 
 export enum TokenKind {
-  Ident = 'intern:Ident',
+  Name = 'intern:Name',
 
-  FormatString = 'lit:template',
+  FormatString = 'lit:FormatString',
   Number = 'lit:Number',
   String = 'lit:String',
   Bool = 'lit:Bool',
@@ -24,19 +24,20 @@ export enum TokenKind {
   LtEq = 'sym:LtEq', // <=
   GtEq = 'sym:GtEq', // >=
   Percent = 'sym:Percent',
+
+  Bang = 'sym:Bang', // '!'
   Caret = 'sym:Caret',
+  BitwiseOr = 'sym:BitwiseOr', // '|'
+  BitwiseAnd = 'sym:BitwiseAnd', // '&&'
 
   Colon = 'sym:Colon',
+  Semi = 'sym:Semi',
   Comma = 'sym:Comma',
   Hash = 'sym:Hash', // '#'
-  Bang = 'sym:Bang', // '!'
   Eq = 'sym:Eq',
+
   EqEq = 'sym:EqEq', // '=='
   NotEq = 'sym:NotEq', // '!='
-  Or = 'sym:Or', // '|'
-  OrOr = 'sym:OrOr', // '||'
-  And = 'sym:And', // '&&'
-  AndAnd = 'sym:AndAnd', // '&&'
   LtLt = 'sym:GtLt', // '<<'
   GtGt = 'sym:GtGt', // '>>'
 
@@ -66,6 +67,8 @@ export enum TokenKind {
   For = 'kwd:For',
   In = 'kwd:In',
   Return = 'kwd:Return',
+  Or = 'kwd:Or', // or
+  And = 'kwd:And', // and
 }
 
 const tokenSym = Symbol('token_symbol');
@@ -111,6 +114,22 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
   }
 }
 
+export const KeywordToTokenKindMap: Record<string, TokenKind> = {
+  let: TokenKind.Let,
+  const: TokenKind.Const,
+  fn: TokenKind.Fn,
+  if: TokenKind.If,
+  else: TokenKind.Else,
+  elif: TokenKind.ElseIf,
+  match: TokenKind.Match,
+  while: TokenKind.While,
+  for: TokenKind.For,
+  in: TokenKind.In,
+  return: TokenKind.Return,
+  or: TokenKind.Or,
+  and: TokenKind.And,
+};
+
 export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '!': TokenKind.Bang,
   '@': TokenKind.At,
@@ -118,10 +137,8 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '^': TokenKind.Caret,
   ',': TokenKind.Comma,
 
-  '&': TokenKind.And,
-  '&&': TokenKind.AndAnd,
-  '|': TokenKind.Or,
-  '||': TokenKind.OrOr,
+  '&': TokenKind.BitwiseAnd,
+  '|': TokenKind.BitwiseOr,
 
   '(': TokenKind.LeftParen,
   ')': TokenKind.RightParen,
@@ -142,6 +159,9 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '>=': TokenKind.GtEq,
   '==': TokenKind.EqEq,
   '!=': TokenKind.NotEq,
+
+  ':': TokenKind.Colon,
+  ';': TokenKind.Semi,
 
   '->': TokenKind.ThinArrow,
   '=>': TokenKind.FatArrow,

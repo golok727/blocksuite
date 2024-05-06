@@ -5,15 +5,16 @@ import { TokenKind } from '../../../database-block/formula/token.js';
 
 describe('Lexer', () => {
   test('token gen', () => {
-    const src = `'Radhey Shyam {}'`;
+    const src = `
+    let a = 1_100_100
+    `;
     const lex = new Lexer(src);
-    let thing = lex.next();
-    while (thing.kind !== TokenKind.Eof) {
-      if (![TokenKind.Whitespace, TokenKind.NewLine].includes(thing.kind))
-        console.log(thing.kind);
-      thing = lex.next();
-    }
-    console.log(thing.kind);
-    // console.log(Array.from(lex).map(t => t.kind));
+    const tokens = Array.from(lex).filter(
+      token => ![TokenKind.Whitespace, TokenKind.NewLine].includes(token.kind)
+    );
+    console.log(tokens.map(t => t.kind));
+    const joined = tokens.map(({ span }) => src.slice(span.start, span.end));
+    console.log(joined);
+    console.log(tokens);
   });
 });

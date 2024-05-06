@@ -1,6 +1,13 @@
-import { EOF_CHAR } from './constants.js';
-import { Span } from './span.js';
 import {
+  CHAR_IS_DIGIT,
+  CHAR_IS_VALID_NAME,
+  CHAR_IS_VALID_NAME_START,
+  CHAR_IS_VALID_NUMBER_LITERAL,
+  EOF_CHAR,
+} from './constants.js';
+import { Span, SrcSpan } from './span.js';
+import {
+  KeywordToTokenKindMap,
   LiteralToken,
   SymbolToTokenKindMap,
   Token,
@@ -10,35 +17,33 @@ import { Cursor } from './utils/cursor.js';
 
 export class Lexer {
   private chars: Cursor;
-  private loc = { start: 0, end: 0 };
 
+  private location: number;
   constructor(public source: string) {
     this.source = this.normalizeString(source);
     this.chars = new Cursor(this.normalizeString(this.source));
-  }
-
-  get start() {
-    return this.loc.start;
-  }
-
-  get end() {
-    return this.loc.end;
+    this.location = this.chars.range;
   }
 
   next(): Token {
-    this.chars.resetRange();
-
+    this.beginRange();
     return this.consume();
+  }
+
+  private get span() {
+    return new SrcSpan(this.location, this.location + this.chars.range);
+  }
+
+  private beginRange() {
+    this.location += this.chars.range;
+    this.chars.resetRange();
   }
 
   private consume(): Token {
     const cur = this.chars.next();
     switch (cur) {
       case EOF_CHAR:
-        return new Token(
-          TokenKind.Eof,
-          Span(this.chars.range, this.chars.range + 1)
-        );
+        return new Token(TokenKind.Eof, this.span);
 
       case "'":
       case '"':
@@ -79,14 +84,6 @@ export class Lexer {
         }
         return this.consumeSymbol(cur);
       }
-      case '&':
-      case '|': {
-        if (this.chars.peekNext() === cur) {
-          this.chars.next();
-          return this.consumeSymbol(cur + cur);
-        }
-        return this.consumeSymbol(cur);
-      }
       case '.': {
         let count = 1;
 
@@ -112,6 +109,10 @@ export class Lexer {
         return this.consumeSymbol(cur);
       }
       case '@':
+      case ':':
+      case ';':
+      case '&':
+      case '|':
       case '%':
       case '^':
       case '(':
@@ -127,11 +128,76 @@ export class Lexer {
       case '\n':
         return this.consumeSymbol(cur);
       default: {
+        if (CHAR_IS_DIGIT.test(cur)) {
+          return this.consumeNumberLiteral(cur);
+        } else {
+          if (CHAR_IS_VALID_NAME_START.test(cur)) {
+            const name = this.parseName(cur);
+            const keyword = this.getKeyword(name);
+            if (keyword) {
+              return new Token(keyword, this.span);
+            }
+            return new Token(TokenKind.Name, this.span); // todo should contain the name
+          }
+        }
+
         // check for identifiers
         // check for other stuff
         return new Token(TokenKind.Unknown, Span(0, 0));
       }
     }
+  }
+
+  private parseName(start: string): string {
+    let name = start;
+    this.chars.eatWhile(c => {
+      if (!CHAR_IS_VALID_NAME.test(c)) return false;
+      name += c;
+      return true;
+    });
+    return name;
+  }
+
+  private getKeyword(maybeKeyword: string): TokenKind | null {
+    return KeywordToTokenKindMap[maybeKeyword] ?? null;
+  }
+  private baseMap = {
+    b: 2,
+    o: 8,
+    x: 16,
+  } as Record<string, 2 | 8 | 10 | 16>;
+
+  private consumeNumberLiteral(start: string): Token {
+    // TODO make this better with float
+    const next = this.chars.peekNext();
+    let base: 2 | 8 | 10 | 16 = 10;
+
+    let parsed = '';
+    if (start === '0' && ['b', 'x', 'o'].includes(next.toLowerCase())) {
+      // TODO add error checks for invalid prefix
+      base = this.baseMap[next.toLowerCase()];
+      this.chars.next();
+      parsed = this.parseNumberLiteral('');
+    } else {
+      parsed = this.parseNumberLiteral(start);
+    }
+
+    const num = parseInt(parsed, base);
+    if (isNaN(num)) {
+      throw new Error('Invalid number literal');
+    }
+
+    return new LiteralToken<number>(TokenKind.Number, this.span, num);
+  }
+
+  private parseNumberLiteral(start: string) {
+    this.chars.eatWhile(c => {
+      if (!CHAR_IS_VALID_NUMBER_LITERAL.test(c)) return false;
+
+      if (c !== '_') start += c;
+      return true;
+    });
+    return start;
   }
 
   private consumeStringLiteral(mode: string) {
@@ -140,7 +206,8 @@ export class Lexer {
     }
 
     let str = '';
-    const isTemplate = '`';
+    const isTemplate = mode === '`';
+
     this.chars.eatWhile(s => {
       if (s === mode || (!isTemplate && s === '\n')) return false;
       str += s;
@@ -150,11 +217,12 @@ export class Lexer {
     this.chars.next(); // TODO throw error if next is not mode
 
     return new LiteralToken<string>(
-      isTemplate ? TokenKind.String : TokenKind.FormatString,
-      Span(0, 0),
+      isTemplate ? TokenKind.FormatString : TokenKind.String,
+      this.span,
       str
     );
   }
+
   private consumeComment(mode: 'inline' | 'block') {
     if (mode === 'inline') {
       this.chars.eatWhile(s => {
@@ -167,17 +235,18 @@ export class Lexer {
       this.chars.eatWhile(c => {
         return !(c === '*' && this.chars.peekNext2() === '/');
       });
-      this.chars.next();
-      this.chars.next();
+      // TODO may be add error if eof
+      this.chars.next(); // eat *
+      this.chars.next(); // eat /
     }
 
-    return new Token(TokenKind.Comment, Span(0, 0));
+    return new Token(TokenKind.Comment, this.span);
   }
 
   private consumeSymbol(symbol: string) {
     const tokenKind = SymbolToTokenKindMap[symbol];
     if (tokenKind === undefined) throw new Error(`Unexpected symbol ${symbol}`);
-    return new Token(tokenKind, Span(this.chars.range, this.chars.range + 1)); // todo add a position
+    return new Token(tokenKind, this.span); // Add position
   }
 
   // private isIdentStart(_c: string) {}
@@ -191,9 +260,9 @@ export class Lexer {
     let done = false;
     return {
       next() {
-        const next = clone.next();
-        if (next && next?.kind === TokenKind.Eof) done = true;
-        return { value: clone.next(), done };
+        const value = clone.next();
+        if (value.kind === TokenKind.Eof) done = true;
+        return { value, done };
       },
     };
   }
