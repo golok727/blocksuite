@@ -25,7 +25,7 @@ describe('Cursor simple test', () => {
     const cur = new Cursor(src);
     let acc = '';
     while (!cur.isEOF()) {
-      const item = cur.eat();
+      const item = cur.next();
       acc += item;
     }
     expect(src).toBe(acc);
@@ -35,7 +35,7 @@ describe('Cursor simple test', () => {
     const cur = new Cursor('"BlockSuite"');
     let str = '';
     while (!cur.isEOF()) {
-      const item = cur.eat();
+      const item = cur.next();
       if (item === '"') {
         cur.eatWhile(s => {
           if (s === '"') return false;
@@ -56,7 +56,7 @@ describe('Cursor simple test', () => {
     let cumulativeRange = cur.range;
     let str = '';
     for (let i = 0; i < 'block'.length; i++) {
-      str += cur.eat();
+      str += cur.next();
     }
 
     tokens.push({
@@ -64,14 +64,14 @@ describe('Cursor simple test', () => {
       span: new SrcSpan(cumulativeRange, cumulativeRange + cur.range),
     });
 
-    cur.eat(); // space
+    cur.next(); // space
     cumulativeRange = cur.range;
 
     cur.resetRange();
 
     str = '';
     for (let i = 0; i < 'suite'.length; i++) {
-      str += cur.eat();
+      str += cur.next();
     }
 
     tokens.push({

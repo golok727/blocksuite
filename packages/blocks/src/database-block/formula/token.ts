@@ -1,64 +1,68 @@
 import { type SrcSpan } from './span.js';
 
 export enum TokenKind {
-  Ident = 'intern:ident',
+  Ident = 'intern:Ident',
 
-  Number = 'lit:number',
-  String = 'lit:string',
-  Bool = 'lit:bool',
+  Number = 'lit:Number',
+  String = 'lit:String',
+  Bool = 'lit:Bool',
 
-  LeftParen = 'sym:leftParen', // (
-  RightParen = 'sym:rightParen', // )
-  LeftSquare = 'sym:leftSq', // [
-  RightSquare = 'sym:rightSq', // ]
-  LeftBrace = 'sym:leftBrace', // {
-  RightBrace = 'sym:rightBrace', // }
+  LeftParen = 'sym:LeftParen', // (
+  RightParen = 'sym:RightParen', // )
+  LeftSquare = 'sym:LeftSquare', // [
+  RightSquare = 'sym:RightSquare', // ]
+  LeftBrace = 'sym:LeftBrace', // {
+  RightBrace = 'sym:RightBrace', // }
 
-  Plus = 'sym:plus',
-  Minus = 'sym:minus',
-  Star = 'sym:star',
-  Slash = 'sym:slash',
-  Lt = 'sym:lt', // <
-  Gt = 'sym:gt', // >
-  LtEq = 'sym:ltEq', // <=
-  GtEq = 'sym:gtEq', // >=
-  Percent = 'sym:percent',
+  Plus = 'sym:Plus',
+  Minus = 'sym:Minus',
+  Star = 'sym:Star',
+  Slash = 'sym:Slash',
+  Lt = 'sym:Lt', // <
+  Gt = 'sym:Gt', // >
+  LtEq = 'sym:LtEq', // <=
+  GtEq = 'sym:GtEq', // >=
+  Percent = 'sym:Percent',
 
-  Colon = 'sym:colon',
-  Comma = 'sym:comma',
-  Hash = 'sym:hash', // '#'
-  Bang = 'sym:bang', // '!'
-  Eq = 'sym:eq',
-  EqEq = 'sym:eqEq', // '=='
-  NotEqual = 'sym:nEq', // '!='
-  Or = 'sym:or', // '|'
-  OrOr = 'sym:orOr', // '||'
-  And = 'sym:and', // '&&'
-  AndAnd = 'sym:andAnd', // '&&'
-  LtLt = 'sym:ltLt', // '<<'
-  GtGt = 'sym:gtGt', // '>>'
-  Dot = 'sym:dot', // '.'
-  RArrow = 'sym:rArrow', // '->'
-  LArrow = 'sym:lArrow', // '<-'
-  DotDot = 'sym:dotDot', // '..'
-  DotDotDot = 'sym:dotDotDot', // '...'
-  At = 'sym:at', // '@'
-  Eof = 'sym:eof', // End of File
+  Colon = 'sym:Colon',
+  Comma = 'sym:Comma',
+  Hash = 'sym:Hash', // '#'
+  Bang = 'sym:Bang', // '!'
+  Eq = 'sym:Eq',
+  EqEq = 'sym:EqEq', // '=='
+  NotEqual = 'sym:NotEqual', // '!='
+  Or = 'sym:Or', // '|'
+  OrOr = 'sym:OrOr', // '||'
+  And = 'sym:And', // '&&'
+  AndAnd = 'sym:AndAnd', // '&&'
+  LtLt = 'sym:GtLt', // '<<'
+  GtGt = 'sym:GtGt', // '>>'
+  RArrow = 'sym:RightArrow', // '->'
+  LArrow = 'sym:LeftArrow', // '<-'
+  Dot = 'sym:Dot', // '.'
+  DotDot = 'sym:DotDot', // '..'
+  DotDotDot = 'sym:DotDotDot', // '...'
+  At = 'sym:At', // '@'
+  Eof = 'sym:Eof', // End of File
 
-  Comment = 'misc:comment',
-  NewLine = 'misc:newLine',
-  Whitespace = 'misc:whitespace',
+  Comment = 'misc:Comment',
+  NewLine = 'misc:NewLine',
+  Whitespace = 'misc:Whitespace',
 
   // keywords
-  Const = 'kwd:const',
-  Else = 'kwd:else',
-  ElseIf = 'kwd:elseif',
-  Fn = 'kwd:fn',
-  If = 'kwd:if',
-  Match = 'kwd:match',
-  Let = 'kwd:let',
-  Return = 'kwd:return',
+  Const = 'kwd:Const',
+  Fn = 'kwd:Fn',
+  If = 'kwd:If',
+  Else = 'kwd:Else',
+  ElseIf = 'kwd:ElseIf',
+  Match = 'kwd:Match',
+  Let = 'kwd:Let',
+  While = 'kwd:While',
+  For = 'kwd:For',
+  In = 'kwd:In',
+  Return = 'kwd:Return',
 }
+
 const tokenSym = Symbol('token_symbol');
 export class Token<Value = unknown> {
   [tokenSym] = '__token__' as Value;
@@ -77,7 +81,9 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
     public data: Type
   ) {
     if (!kind.startsWith('lit:'))
-      throw new Error('Literal Token must be of type ');
+      throw new Error(
+        'Literal Token must be of type number | string | boolean'
+      );
     super(kind, span);
   }
 

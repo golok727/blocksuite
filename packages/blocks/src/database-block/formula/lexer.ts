@@ -1,14 +1,33 @@
 import type { Token } from './token.js';
 import { Cursor } from './utils/cursor.js';
 
-export class Lexer extends Cursor {
+export class Lexer {
+  private chars: Cursor;
+  private loc = { start: 0, end: 0 };
+
   constructor(source: string) {
-    super(source);
+    this.chars = new Cursor(source);
   }
 
-  next(): Token {
-    // let c = this.eat();
-    // match pattern
-    throw new Error('un implemented');
+  get start() {
+    return this.loc.start;
   }
+
+  get end() {
+    return this.loc.end;
+  }
+
+  next(): Token | undefined {
+    this.chars.resetRange();
+
+    return this.consume();
+  }
+
+  private consume(): Token | undefined {
+    const cur = this.chars.next();
+    console.log(cur);
+    return undefined;
+  }
+
+  // private isIdentStart(_c: string) {}
 }

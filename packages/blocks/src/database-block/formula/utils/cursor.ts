@@ -38,7 +38,7 @@ export class Cursor {
     return iter.peek() ?? EOF_CHAR;
   }
 
-  eat() {
+  next() {
     return this.chars.next() ?? EOF_CHAR;
   }
 
