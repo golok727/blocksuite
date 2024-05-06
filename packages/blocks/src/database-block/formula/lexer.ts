@@ -1,11 +1,12 @@
 import {
-  CHAR_IS_DIGIT,
   CHAR_IS_VALID_NAME,
   CHAR_IS_VALID_NAME_START,
   CHAR_IS_VALID_NUMBER_LITERAL,
   EOF_CHAR,
 } from './constants.js';
-import { Span, SrcSpan } from './span.js';
+import { LexErrorCode } from './exceptions/codes.js';
+import { BlockScriptError } from './exceptions/error.js';
+import { SrcSpan } from './span.js';
 import {
   KeywordToTokenKindMap,
   LiteralToken,
@@ -17,8 +18,10 @@ import { Cursor } from './utils/cursor.js';
 
 export class Lexer {
   private chars: Cursor;
-
   private location: number;
+
+  // @ts-ignore
+  private char: string = EOF_CHAR;
   constructor(public source: string) {
     this.source = this.normalizeString(source);
     this.chars = new Cursor(this.normalizeString(this.source));
@@ -33,6 +36,8 @@ export class Lexer {
   private get span() {
     return new SrcSpan(this.location, this.location + this.chars.range);
   }
+
+  private nextChar() {}
 
   private beginRange() {
     this.location += this.chars.range;
@@ -128,7 +133,7 @@ export class Lexer {
       case '\n':
         return this.consumeSymbol(cur);
       default: {
-        if (CHAR_IS_DIGIT.test(cur)) {
+        if (isDigit(cur)) {
           return this.consumeNumberLiteral(cur);
         } else {
           if (CHAR_IS_VALID_NAME_START.test(cur)) {
@@ -141,9 +146,10 @@ export class Lexer {
           }
         }
 
-        // check for identifiers
-        // check for other stuff
-        return new Token(TokenKind.Unknown, Span(0, 0));
+        throw BlockScriptError.LexError(
+          LexErrorCode.UnexpectedToken,
+          `Unexpected token ${cur}`
+        );
       }
     }
   }
@@ -161,6 +167,7 @@ export class Lexer {
   private getKeyword(maybeKeyword: string): TokenKind | null {
     return KeywordToTokenKindMap[maybeKeyword] ?? null;
   }
+
   private baseMap = {
     b: 2,
     o: 8,
@@ -189,6 +196,14 @@ export class Lexer {
 
     return new LiteralToken<number>(TokenKind.Number, this.span, num);
   }
+
+  private parseDecimal() {}
+
+  private parseFloat() {}
+
+  private parseHex() {}
+
+  private parseOct() {}
 
   private parseNumberLiteral(start: string) {
     this.chars.eatWhile(c => {
@@ -266,4 +281,12 @@ export class Lexer {
       },
     };
   }
+}
+
+export function isValidNumberChar(c: string) {
+  return c === '_' || (c >= '0' && c <= '9');
+}
+
+export function isDigit(c: string) {
+  return c >= '0' && c <= '9';
 }
