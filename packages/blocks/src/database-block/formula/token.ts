@@ -1,8 +1,7 @@
 import { type SrcSpan } from './span.js';
 
 export enum TokenKind {
-  Name = 'intern:Name',
-
+  Name = 'lit:Name',
   FormatString = 'lit:FormatString',
   Number = 'lit:Number',
   String = 'lit:String',
@@ -93,6 +92,10 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
         'Literal Token must be of type number | string | boolean'
       );
     super(kind, span);
+  }
+
+  isName(): this is LiteralToken<string> {
+    return this.kind === TokenKind.Name;
   }
 
   isNumber(): this is LiteralToken<number> {
