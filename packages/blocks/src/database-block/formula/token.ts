@@ -3,14 +3,15 @@ import { type SrcSpan } from './span.js';
 export enum TokenKind {
   Ident = 'intern:Ident',
 
+  FormatString = 'lit:template',
   Number = 'lit:Number',
   String = 'lit:String',
   Bool = 'lit:Bool',
 
   LeftParen = 'sym:LeftParen', // (
   RightParen = 'sym:RightParen', // )
-  LeftSquare = 'sym:LeftSquare', // [
-  RightSquare = 'sym:RightSquare', // ]
+  LeftBracket = 'sym:LeftSquare', // [
+  RightBracket = 'sym:RightSquare', // ]
   LeftBrace = 'sym:LeftBrace', // {
   RightBrace = 'sym:RightBrace', // }
 
@@ -23,6 +24,7 @@ export enum TokenKind {
   LtEq = 'sym:LtEq', // <=
   GtEq = 'sym:GtEq', // >=
   Percent = 'sym:Percent',
+  Caret = 'sym:Caret',
 
   Colon = 'sym:Colon',
   Comma = 'sym:Comma',
@@ -30,15 +32,17 @@ export enum TokenKind {
   Bang = 'sym:Bang', // '!'
   Eq = 'sym:Eq',
   EqEq = 'sym:EqEq', // '=='
-  NotEqual = 'sym:NotEqual', // '!='
+  NotEq = 'sym:NotEq', // '!='
   Or = 'sym:Or', // '|'
   OrOr = 'sym:OrOr', // '||'
   And = 'sym:And', // '&&'
   AndAnd = 'sym:AndAnd', // '&&'
   LtLt = 'sym:GtLt', // '<<'
   GtGt = 'sym:GtGt', // '>>'
-  RArrow = 'sym:RightArrow', // '->'
-  LArrow = 'sym:LeftArrow', // '<-'
+
+  ThinArrow = 'sym:RightArrow', // '->'
+  FatArrow = 'sym:FatArrow',
+
   Dot = 'sym:Dot', // '.'
   DotDot = 'sym:DotDot', // '..'
   DotDotDot = 'sym:DotDotDot', // '...'
@@ -48,6 +52,7 @@ export enum TokenKind {
   Comment = 'misc:Comment',
   NewLine = 'misc:NewLine',
   Whitespace = 'misc:Whitespace',
+  Unknown = 'misc:Unknown',
 
   // keywords
   Const = 'kwd:Const',
@@ -92,7 +97,9 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
   }
 
   isString(): this is LiteralToken<string> {
-    return this.kind === TokenKind.String;
+    return (
+      this.kind === TokenKind.String || this.kind === TokenKind.FormatString
+    );
   }
 
   isBool(): this is LiteralToken<boolean> {
@@ -103,3 +110,46 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
     return token.kind.startsWith('lit:');
   }
 }
+
+export const SymbolToTokenKindMap: Record<string, TokenKind> = {
+  '!': TokenKind.Bang,
+  '@': TokenKind.At,
+  '%': TokenKind.Percent,
+  '^': TokenKind.Caret,
+  ',': TokenKind.Comma,
+
+  '&': TokenKind.And,
+  '&&': TokenKind.AndAnd,
+  '|': TokenKind.Or,
+  '||': TokenKind.OrOr,
+
+  '(': TokenKind.LeftParen,
+  ')': TokenKind.RightParen,
+  '[': TokenKind.LeftBracket,
+  ']': TokenKind.RightBracket,
+  '{': TokenKind.LeftBrace,
+  '}': TokenKind.RightBrace,
+
+  '+': TokenKind.Plus,
+  '-': TokenKind.Minus,
+  '*': TokenKind.Star,
+  '/': TokenKind.Slash,
+  '=': TokenKind.Eq,
+
+  '<': TokenKind.Lt,
+  '>': TokenKind.Gt,
+  '<=': TokenKind.Lt,
+  '>=': TokenKind.GtEq,
+  '==': TokenKind.EqEq,
+  '!=': TokenKind.NotEq,
+
+  '->': TokenKind.ThinArrow,
+  '=>': TokenKind.FatArrow,
+
+  '.': TokenKind.Dot,
+  '..': TokenKind.DotDot,
+  '...': TokenKind.DotDotDot,
+
+  ' ': TokenKind.Whitespace,
+  '\n': TokenKind.NewLine,
+};
