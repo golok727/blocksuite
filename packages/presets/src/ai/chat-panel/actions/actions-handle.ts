@@ -3,20 +3,24 @@ import type {
   EditorHost,
   TextSelection,
 } from '@blocksuite/block-std';
-import type { EdgelessRootService, SerializedXYWH } from '@blocksuite/blocks';
+import type {
+  EdgelessRootService,
+  ImageSelection,
+  SerializedXYWH,
+} from '@blocksuite/blocks';
 import {
   BlocksUtils,
   Bound,
   getElementsBound,
   NoteDisplayMode,
 } from '@blocksuite/blocks';
-import { Text } from '@blocksuite/store';
 
 import {
   CreateIcon,
   InsertBelowIcon,
   ReplaceIcon,
 } from '../../_common/icons.js';
+import { reportResponse } from '../../utils/action-reporter.js';
 import { insertBelow, replace } from '../../utils/editor-actions.js';
 import { insertFromMarkdown } from '../../utils/markdown-utils.js';
 
@@ -40,6 +44,8 @@ const CommonActions = [
         })
         .run();
       if (!data.selectedBlocks) return;
+
+      reportResponse('result:replace');
 
       if (currentTextSelection) {
         const { doc } = host;
@@ -70,17 +76,19 @@ const CommonActions = [
       host: EditorHost,
       content: string,
       currentTextSelection?: TextSelection,
-      currentBlockSelections?: BlockSelection[]
+      currentBlockSelections?: BlockSelection[],
+      currentImageSelections?: ImageSelection[]
     ) => {
       const [_, data] = host.command
         .chain()
         .getSelectedBlocks({
           currentTextSelection,
           currentBlockSelections,
+          currentImageSelections,
         })
         .run();
       if (!data.selectedBlocks) return;
-
+      reportResponse('result:insert');
       await insertBelow(
         host,
         content,
@@ -94,17 +102,30 @@ export const PageEditorActions = [
   ...CommonActions,
   {
     icon: CreateIcon,
-    title: 'Create as a page',
+    title: 'Create as a doc',
     handler: (host: EditorHost, content: string) => {
+      reportResponse('result:add-page');
       const newDoc = host.doc.collection.createDoc();
       newDoc.load();
       const rootId = newDoc.addBlock('affine:page');
       newDoc.addBlock('affine:surface', {}, rootId);
       const noteId = newDoc.addBlock('affine:note', {}, rootId);
-      newDoc.addBlock('affine:paragraph', { text: new Text(content) }, noteId);
+
       host.spec.getService('affine:page').slots.docLinkClicked.emit({
         docId: newDoc.id,
       });
+      let complete = false;
+      (function addContent() {
+        if (complete) return;
+        const newHost = document.querySelector('editor-host');
+        // FIXME: this is a hack to wait for the host to be ready, now we don't have a way to know if the new host is ready
+        if (!newHost || newHost === host) {
+          setTimeout(addContent, 100);
+          return;
+        }
+        complete = true;
+        insertFromMarkdown(newHost, content, noteId, 0).catch(console.error);
+      })();
     },
   },
 ];
@@ -115,6 +136,7 @@ export const EdgelessEditorActions = [
     icon: CreateIcon,
     title: 'Add to edgeless as note',
     handler: async (host: EditorHost, content: string) => {
+      reportResponse('result:add-note');
       const { doc } = host;
       const service = host.spec.getService<EdgelessRootService>('affine:page');
       const elements = service.selection.elements;
