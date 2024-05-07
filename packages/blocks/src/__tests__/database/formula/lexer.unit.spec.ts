@@ -5,7 +5,7 @@ import { TokenKind } from '../../../database-block/formula/token.js';
 
 describe('Lexer', () => {
   test('token gen', () => {
-    const src = `let a = "Hello World"`;
+    const src = String.raw`let a = "Hello world"`;
 
     const lex = new Lexer(src);
     const tokens = Array.from(lex).filter(

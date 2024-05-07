@@ -1,4 +1,4 @@
-import { EOF_CHAR } from './constants.js';
+import { EOF_CHAR, ESCAPE_CHARACTER_MAP } from './constants.js';
 import { ParseErrorCode } from './exceptions/codes.js';
 import { BlockFormulaError } from './exceptions/error.js';
 import { SrcSpan } from './span.js';
@@ -232,7 +232,7 @@ export class Lexer {
       throw new Error('Unexpected mode required " | \' | `');
     }
 
-    if (mode === '`') return this.consumeRawString();
+    if (mode === '`') return this.consumeTemplateString();
     return this.consumeQuotedString(mode);
   }
 
@@ -242,18 +242,20 @@ export class Lexer {
     this.eatWhile(c => {
       if (c === '\\') {
         const next = this.chars.peekNext2();
-        if (next === quote || next.match(/[fnrt\\]/)) {
-          const escape = this.getEscapeCharacter(next);
+        const escape = this.getEscapeCharacter(next);
 
-          if (escape !== null) {
-            stringContent += escape;
-            this.nextChar(); // skip f,n,r,t..
-          }
-          return true;
+        if (escape !== null) {
+          stringContent += escape;
+          this.nextChar();
+        } else {
+          // TODO can improve this with \x
+          stringContent += c;
         }
-      }
 
+        return true;
+      }
       if (c === quote || c === '\n') return false;
+      console.log(c);
       stringContent += c;
       return true;
     });
@@ -267,7 +269,7 @@ export class Lexer {
     return new LiteralToken<string>(TokenKind.String, this.span, stringContent);
   }
 
-  private consumeRawString() {
+  private consumeTemplateString() {
     // template strings are raw
     let stringContent = '';
     this.eatWhile(c => {
@@ -287,24 +289,14 @@ export class Lexer {
     this.nextChar(); // eat `
 
     return new LiteralToken<string>(
-      TokenKind.RawString,
+      TokenKind.TemplateString,
       this.span,
       stringContent
     );
   }
 
   private getEscapeCharacter(c: string): string {
-    const escapeMap: Record<string, string> = {
-      n: '\n',
-      f: '\f',
-      t: '\t',
-      r: '',
-      "'": "'",
-      '"': '"',
-      '`': '`',
-      '\\': '\\',
-    };
-    return escapeMap[c] ?? null;
+    return ESCAPE_CHARACTER_MAP[c] ?? null;
   }
 
   private consumeComment(mode: 'inline' | 'block') {
