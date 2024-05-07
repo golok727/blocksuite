@@ -17,7 +17,10 @@ import { assertExists } from '@blocksuite/global/utils';
 import { Slice } from '@blocksuite/store';
 
 import { getAIPanel } from '../ai-panel.js';
-import { createMindmapRenderer } from '../messages/mindmap.js';
+import {
+  createMindmapExecuteRenderer,
+  createMindmapRenderer,
+} from '../messages/mindmap.js';
 import { createSlidesRenderer } from '../messages/slides-renderer.js';
 import { createTextRenderer } from '../messages/text.js';
 import {
@@ -34,10 +37,12 @@ import { EXCLUDING_COPY_ACTIONS } from './consts.js';
 import { bindTextStream } from './doc-handler.js';
 import type { CtxRecord } from './edgeless-response.js';
 import {
+  actionToErrorResponse,
   actionToResponse,
   getCopilotSelectedElems,
   getEdgelessCopilotWidget,
   getElementToolbar,
+  responses,
 } from './edgeless-response.js';
 
 type AnswerRenderer = NonNullable<
@@ -49,7 +54,7 @@ function actionToRenderer<T extends keyof BlockSuitePresets.AIActions>(
   host: EditorHost,
   ctx: CtxRecord
 ): AnswerRenderer {
-  if (id === 'brainstormMindmap' || id === 'expandMindmap') {
+  if (id === 'brainstormMindmap') {
     const selectedElements = ctx.get()['selectedElements'] as EdgelessModel[];
 
     if (
@@ -61,6 +66,12 @@ function actionToRenderer<T extends keyof BlockSuitePresets.AIActions>(
     }
 
     return createMindmapRenderer(host, ctx);
+  }
+
+  if (id === 'expandMindmap') {
+    return createMindmapExecuteRenderer(host, ctx, ctx => {
+      responses['expandMindmap']?.(host, ctx);
+    });
   }
 
   if (id === 'createSlides') {
@@ -281,7 +292,14 @@ function updateEdgelessAIPanelConfig<
     variants,
     customInput
   )(host, ctx);
-  config.finishStateConfig = actionToResponse(id, host, ctx);
+  config.finishStateConfig = actionToResponse(id, host, ctx, variants);
+  config.errorStateConfig = actionToErrorResponse(
+    aiPanel,
+    id,
+    host,
+    ctx,
+    variants
+  );
   config.copy = {
     allowed: !EXCLUDING_COPY_ACTIONS.includes(id),
     onCopy: () => {
