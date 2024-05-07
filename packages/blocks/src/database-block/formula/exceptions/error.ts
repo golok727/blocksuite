@@ -27,7 +27,7 @@ export class BlockFormulaError extends Error {
     );
   }
 
-  static SyntaxError(code: ParseErrorCode, message?: string) {
+  static SyntaxError(code: SyntaxErrorCode, message?: string) {
     return new BlockFormulaError(
       ErrorType.SyntaxError,
       code,
@@ -35,7 +35,7 @@ export class BlockFormulaError extends Error {
     );
   }
 
-  static RuntimeError(code: ParseErrorCode, message?: string) {
+  static RuntimeError(code: RuntimeErrorCode, message?: string) {
     return new BlockFormulaError(
       ErrorType.RuntimeError,
       code,

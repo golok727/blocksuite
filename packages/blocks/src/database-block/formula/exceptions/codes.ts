@@ -7,6 +7,9 @@ export enum ParseErrorCode {
 
 export enum SyntaxErrorCode {
   Unknown = 0,
+  UnexpectedToken,
+  UnterminatedLiteral,
+  UnexpectedNumber,
 }
 
 export enum RuntimeErrorCode {

@@ -1,5 +1,5 @@
 import { EOF_CHAR, ESCAPE_CHARACTER_MAP } from '../constants.js';
-import { ParseErrorCode } from '../exceptions/codes.js';
+import { SyntaxErrorCode } from '../exceptions/codes.js';
 import { BlockFormulaError } from '../exceptions/error.js';
 import { SrcSpan } from '../span.js';
 import {
@@ -59,11 +59,16 @@ export class Lexer {
   }
 
   private eatWhile(f: (c: string) => boolean) {
+    let str = '';
     this.chars.eatWhile(c => {
       const v = f(c ?? EOF_CHAR);
-      if (v) this.chr = c ?? EOF_CHAR;
+      if (v) {
+        str += c ?? EOF_CHAR;
+        this.chr = c ?? EOF_CHAR;
+      }
       return v;
     });
+    return str;
   }
 
   private beginRange() {
@@ -156,11 +161,12 @@ export class Lexer {
       case ',':
       case '*':
       case ' ':
+      case '\t':
       case '\n':
         return this.lexSymbol(c);
       default: {
         if (this.isNumberStart(c)) {
-          return this.lexNumber();
+          return this.lexNumberLiteral();
         } else {
           if (this.isNameStart(c)) {
             const name = this.lexName();
@@ -176,8 +182,8 @@ export class Lexer {
           }
         }
 
-        throw BlockFormulaError.ParseError(
-          ParseErrorCode.UnexpectedToken,
+        throw BlockFormulaError.SyntaxError(
+          SyntaxErrorCode.UnexpectedToken,
           `Unexpected token ${c}`
         );
       }
@@ -198,52 +204,65 @@ export class Lexer {
     return KeywordToTokenKindMap[maybeKeyword] ?? null;
   }
 
-  private baseMap = {
-    b: 2,
-    o: 8,
-    x: 16,
-  } as Record<string, 2 | 8 | 10 | 16>;
-
-  private lexNumber(): Token {
-    const stringContent = this.chr;
-    const next = this.peekNext();
-    let base: 2 | 8 | 10 | 16 = 10;
-
-    let parsed = '';
-    if (stringContent === '0' && ['b', 'x', 'o'].includes(next.toLowerCase())) {
-      // TODO add error checks for invalid prefix
-      base = this.baseMap[next.toLowerCase()];
-      this.nextChar();
-      parsed = this.lexDecimal();
-    } else {
-      parsed = this.lexDecimal();
+  private lexNumberLiteral(): Token {
+    if (this.chr === '0') {
+      switch (this.peekNext()) {
+        case 'x':
+        case 'X': {
+          this.nextChar();
+          return this.lexHex();
+        }
+        case 'o':
+        case 'O': {
+          this.nextChar();
+          return this.lexOctal();
+        }
+        case 'b':
+        case 'B': {
+          this.nextChar();
+          return this.lexBinary();
+        }
+        default: {
+          return this.lexDecimal();
+        }
+      }
     }
+    return this.lexDecimal();
+  }
 
-    const num = parseInt(parsed, base);
-    if (isNaN(num)) {
-      throw new Error('Invalid number literal');
-    }
-
+  private lexBinary(): Token {
+    const stringContent = this.eatWhile(this.isValidBinaryChar);
+    const num = parseInt(stringContent, 2);
     return new LiteralToken<number>(TokenKind.Number, this.position, num);
   }
 
-  // private parseDecimal() {}
+  private lexHex(): Token {
+    const stringContent = this.eatWhile(this.isValidHexChar);
+    const num = parseInt(stringContent, 16);
+    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+  }
 
-  // private parseFloat() {}
-
-  // private parseHex() {}
-
-  // private parseOct() {}
-
-  private lexDecimal() {
-    let stringContent = this.chr;
-    this.eatWhile(c => {
-      if (!this.isNumberContinuation(c)) return false;
-
-      if (c !== '_') stringContent += c;
-      return true;
+  private lexOctal(): Token {
+    const stringContent = this.eatWhile(this.isValidOctal);
+    const num = parseInt(stringContent, 8);
+    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+  }
+  // Todo need a better one
+  private lexDecimal(): Token {
+    let stringContent = this.chr === '0' ? '' : this.chr;
+    let isFloat = false;
+    stringContent += this.eatWhile(c => {
+      if (c === '.') {
+        isFloat = true;
+        return true;
+      }
+      if (c === '_') return true;
+      return this.isDecimalContinuation(c);
     });
-    return stringContent;
+    stringContent.replace(/_/g, '');
+    const num = isFloat ? parseFloat(stringContent) : parseInt(stringContent);
+
+    return new LiteralToken<number>(TokenKind.Number, this.position, num);
   }
 
   private lexStringLiteral() {
@@ -280,8 +299,8 @@ export class Lexer {
     });
 
     if (this.nextChar() !== quote)
-      throw BlockFormulaError.ParseError(
-        ParseErrorCode.UnterminatedLiteral,
+      throw BlockFormulaError.SyntaxError(
+        SyntaxErrorCode.UnterminatedLiteral,
         'Bad termination of string'
       );
 
@@ -304,8 +323,8 @@ export class Lexer {
     });
 
     if (this.chars.peekNext() !== '`')
-      throw BlockFormulaError.ParseError(
-        ParseErrorCode.UnterminatedLiteral,
+      throw BlockFormulaError.SyntaxError(
+        SyntaxErrorCode.UnterminatedLiteral,
         'Bad termination of string'
       );
 
@@ -352,7 +371,21 @@ export class Lexer {
     return c >= '0' && c <= '9';
   }
 
-  private isNumberContinuation(c: string) {
+  private isValidOctal(c: string) {
+    return c >= '0' && c <= '7';
+  }
+
+  private isValidHexChar(c: string) {
+    return (
+      (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+    );
+  }
+
+  private isValidBinaryChar(c: string) {
+    return c === '1' || c === '0';
+  }
+
+  private isDecimalContinuation(c: string) {
     return c === '_' || (c >= '0' && c <= '9');
   }
 

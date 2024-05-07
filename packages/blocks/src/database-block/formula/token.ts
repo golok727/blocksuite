@@ -174,5 +174,6 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '...': TokenKind.DotDotDot,
 
   ' ': TokenKind.Whitespace,
+  '\t': TokenKind.Whitespace,
   '\n': TokenKind.NewLine,
 };
