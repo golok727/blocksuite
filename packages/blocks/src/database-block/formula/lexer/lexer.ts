@@ -80,41 +80,41 @@ export class Lexer {
       case "'":
       case '"':
       case '`': {
-        return this.consumeStringLiteral();
+        return this.lexStringLiteral();
       }
 
       case '/': {
         const next = this.chars.peekNext();
 
         if (next === '*' || next === '/')
-          return this.consumeComment(next === '*' ? 'block' : 'inline');
+          return this.lexComment(next === '*' ? 'block' : 'inline');
 
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       }
       case '!': {
         if (this.chars.peekNext() === '=') {
-          return this.consumeSymbol('!=');
+          return this.lexSymbol('!=');
         }
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       }
       case '=': {
-        const next = this.chars.peekNext();
+        const next = this.peekNext();
 
         if (next === '=' || next == '>') {
           this.nextChar();
-          return this.consumeSymbol(c + next);
+          return this.lexSymbol(c + next);
         }
 
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       }
       case '<':
       case '>': {
-        const next = this.chars.peekNext();
+        const next = this.peekNext();
         if (next === '=') {
           this.nextChar();
-          return this.consumeSymbol(c + next);
+          return this.lexSymbol(c + next);
         }
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       }
       case '.': {
         let count = 1;
@@ -128,17 +128,16 @@ export class Lexer {
         });
 
         if (count <= 3) {
-          return this.consumeSymbol(c.repeat(count));
+          return this.lexSymbol(c.repeat(count));
         }
-
         throw new Error('Unreachable code detected @consume(.)');
       }
       case '-': {
-        if (this.chars.peekNext() === '>') {
+        if (this.peekNext() === '>') {
           this.nextChar();
-          return this.consumeSymbol('->');
+          return this.lexSymbol('->');
         }
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       }
       case '@':
       case ':':
@@ -158,13 +157,13 @@ export class Lexer {
       case '*':
       case ' ':
       case '\n':
-        return this.consumeSymbol(c);
+        return this.lexSymbol(c);
       default: {
         if (this.isNumberStart(c)) {
-          return this.consumeNumberLiteral();
+          return this.lexNumber();
         } else {
           if (this.isNameStart(c)) {
-            const name = this.parseName();
+            const name = this.lexName();
             const keyword = this.getKeyword(name);
             if (keyword) {
               return new Token(keyword, this.position);
@@ -185,7 +184,7 @@ export class Lexer {
     }
   }
 
-  private parseName(): string {
+  private lexName(): string {
     let name = this.chr;
     this.eatWhile(c => {
       if (!this.isNameContinuation(c)) return false;
@@ -205,7 +204,7 @@ export class Lexer {
     x: 16,
   } as Record<string, 2 | 8 | 10 | 16>;
 
-  private consumeNumberLiteral(): Token {
+  private lexNumber(): Token {
     const stringContent = this.chr;
     const next = this.peekNext();
     let base: 2 | 8 | 10 | 16 = 10;
@@ -215,9 +214,9 @@ export class Lexer {
       // TODO add error checks for invalid prefix
       base = this.baseMap[next.toLowerCase()];
       this.nextChar();
-      parsed = this.parseNumberLiteral('');
+      parsed = this.lexDecimal();
     } else {
-      parsed = this.parseNumberLiteral(stringContent);
+      parsed = this.lexDecimal();
     }
 
     const num = parseInt(parsed, base);
@@ -236,17 +235,18 @@ export class Lexer {
 
   // private parseOct() {}
 
-  private parseNumberLiteral(start: string) {
+  private lexDecimal() {
+    let stringContent = this.chr;
     this.eatWhile(c => {
       if (!this.isNumberContinuation(c)) return false;
 
-      if (c !== '_') start += c;
+      if (c !== '_') stringContent += c;
       return true;
     });
-    return start;
+    return stringContent;
   }
 
-  private consumeStringLiteral() {
+  private lexStringLiteral() {
     const mode = this.chr;
     if (!['"', "'", '`'].includes(mode)) {
       throw new Error('Unexpected mode required " | \' | `');
@@ -322,7 +322,7 @@ export class Lexer {
     return ESCAPE_CHARACTER_MAP[c] ?? null;
   }
 
-  private consumeComment(mode: 'inline' | 'block') {
+  private lexComment(mode: 'inline' | 'block') {
     if (mode === 'inline') {
       this.eatWhile(s => {
         return s !== '\n';
@@ -342,7 +342,7 @@ export class Lexer {
     return new Token(TokenKind.Comment, this.position);
   }
 
-  private consumeSymbol(symbol: string) {
+  private lexSymbol(symbol: string) {
     const tokenKind = SymbolToTokenKindMap[symbol];
     if (tokenKind === undefined) throw new Error(`Unexpected symbol ${symbol}`);
     return new Token(tokenKind, this.position); // Add position
