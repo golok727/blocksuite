@@ -1,18 +1,18 @@
-import { EOF_CHAR, ESCAPE_CHARACTER_MAP } from './constants.js';
-import { ParseErrorCode } from './exceptions/codes.js';
-import { BlockFormulaError } from './exceptions/error.js';
-import { SrcSpan } from './span.js';
+import { EOF_CHAR, ESCAPE_CHARACTER_MAP } from '../constants.js';
+import { ParseErrorCode } from '../exceptions/codes.js';
+import { BlockFormulaError } from '../exceptions/error.js';
+import { SrcSpan } from '../span.js';
 import {
   KeywordToTokenKindMap,
   LiteralToken,
   SymbolToTokenKindMap,
   Token,
   TokenKind,
-} from './token.js';
-import { Cursor } from './utils/cursor.js';
+} from '../token.js';
+import { Cursor } from './cursor.js';
 
 export class Lexer {
-  private chars: Cursor;
+  private chars: Cursor<string>;
   private location: number;
 
   // @ts-ignore
@@ -34,7 +34,23 @@ export class Lexer {
     return token;
   }
 
-  private get span() {
+  peekNext() {
+    return this.chars.peekNext() ?? EOF_CHAR;
+  }
+
+  peekNext2() {
+    return this.chars.peekNext2() ?? EOF_CHAR;
+  }
+
+  peekNext3() {
+    return this.chars.peekNext3() ?? EOF_CHAR;
+  }
+
+  isEOF() {
+    return this.chars.isEOF();
+  }
+
+  private get position() {
     return new SrcSpan(this.location, this.location + this.chars.range);
   }
 
@@ -44,8 +60,8 @@ export class Lexer {
 
   private eatWhile(f: (c: string) => boolean) {
     this.chars.eatWhile(c => {
-      const v = f(c);
-      if (v) this.chr = c;
+      const v = f(c ?? EOF_CHAR);
+      if (v) this.chr = c ?? EOF_CHAR;
       return v;
     });
   }
@@ -59,7 +75,7 @@ export class Lexer {
     const c = this.chr;
     switch (c) {
       case EOF_CHAR:
-        return new Token(TokenKind.Eof, this.span);
+        return new Token(TokenKind.Eof, this.position);
 
       case "'":
       case '"':
@@ -151,9 +167,13 @@ export class Lexer {
             const name = this.parseName();
             const keyword = this.getKeyword(name);
             if (keyword) {
-              return new Token(keyword, this.span);
+              return new Token(keyword, this.position);
             }
-            return new LiteralToken<string>(TokenKind.Name, this.span, name);
+            return new LiteralToken<string>(
+              TokenKind.Name,
+              this.position,
+              name
+            );
           }
         }
 
@@ -187,7 +207,7 @@ export class Lexer {
 
   private consumeNumberLiteral(): Token {
     const stringContent = this.chr;
-    const next = this.chars.peekNext();
+    const next = this.peekNext();
     let base: 2 | 8 | 10 | 16 = 10;
 
     let parsed = '';
@@ -205,7 +225,7 @@ export class Lexer {
       throw new Error('Invalid number literal');
     }
 
-    return new LiteralToken<number>(TokenKind.Number, this.span, num);
+    return new LiteralToken<number>(TokenKind.Number, this.position, num);
   }
 
   // private parseDecimal() {}
@@ -241,7 +261,7 @@ export class Lexer {
 
     this.eatWhile(c => {
       if (c === '\\') {
-        const next = this.chars.peekNext2();
+        const next = this.peekNext2();
         const escape = this.getEscapeCharacter(next);
 
         if (escape !== null) {
@@ -255,7 +275,6 @@ export class Lexer {
         return true;
       }
       if (c === quote || c === '\n') return false;
-      console.log(c);
       stringContent += c;
       return true;
     });
@@ -266,7 +285,11 @@ export class Lexer {
         'Bad termination of string'
       );
 
-    return new LiteralToken<string>(TokenKind.String, this.span, stringContent);
+    return new LiteralToken<string>(
+      TokenKind.String,
+      this.position,
+      stringContent
+    );
   }
 
   private consumeTemplateString() {
@@ -290,7 +313,7 @@ export class Lexer {
 
     return new LiteralToken<string>(
       TokenKind.TemplateString,
-      this.span,
+      this.position,
       stringContent
     );
   }
@@ -316,13 +339,13 @@ export class Lexer {
       this.nextChar();
     }
 
-    return new Token(TokenKind.Comment, this.span);
+    return new Token(TokenKind.Comment, this.position);
   }
 
   private consumeSymbol(symbol: string) {
     const tokenKind = SymbolToTokenKindMap[symbol];
     if (tokenKind === undefined) throw new Error(`Unexpected symbol ${symbol}`);
-    return new Token(tokenKind, this.span); // Add position
+    return new Token(tokenKind, this.position); // Add position
   }
 
   private isNumberStart(c: string) {

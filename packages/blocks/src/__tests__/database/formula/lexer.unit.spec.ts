@@ -1,6 +1,6 @@
 import { describe, test } from 'vitest';
 
-import { Lexer } from '../../../database-block/formula/lexer.js';
+import { Lexer } from '../../../database-block/formula/lexer/lexer.js';
 import { TokenKind } from '../../../database-block/formula/token.js';
 
 describe('Lexer', () => {
