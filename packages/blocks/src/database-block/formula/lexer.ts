@@ -1,11 +1,6 @@
-import {
-  CHAR_IS_VALID_NAME,
-  CHAR_IS_VALID_NAME_START,
-  CHAR_IS_VALID_NUMBER_LITERAL,
-  EOF_CHAR,
-} from './constants.js';
-import { LexErrorCode } from './exceptions/codes.js';
-import { BlockScriptError } from './exceptions/error.js';
+import { EOF_CHAR } from './constants.js';
+import { ParseErrorCode } from './exceptions/codes.js';
+import { BlockFormulaError } from './exceptions/error.js';
 import { SrcSpan } from './span.js';
 import {
   KeywordToTokenKindMap,
@@ -44,7 +39,7 @@ export class Lexer {
   }
 
   private nextChar() {
-    this.chr = this.chars.next();
+    return (this.chr = this.chars.next());
   }
 
   private eatWhile(f: (c: string) => boolean) {
@@ -149,21 +144,21 @@ export class Lexer {
       case '\n':
         return this.consumeSymbol(c);
       default: {
-        if (isDigit(c)) {
+        if (this.isNumberStart(c)) {
           return this.consumeNumberLiteral();
         } else {
-          if (CHAR_IS_VALID_NAME_START.test(c)) {
+          if (this.isNameStart(c)) {
             const name = this.parseName();
             const keyword = this.getKeyword(name);
             if (keyword) {
               return new Token(keyword, this.span);
             }
-            return new LiteralToken<string>(TokenKind.Name, this.span, name); // todo should contain the name
+            return new LiteralToken<string>(TokenKind.Name, this.span, name);
           }
         }
 
-        throw BlockScriptError.LexError(
-          LexErrorCode.UnexpectedToken,
+        throw BlockFormulaError.ParseError(
+          ParseErrorCode.UnexpectedToken,
           `Unexpected token ${c}`
         );
       }
@@ -173,7 +168,7 @@ export class Lexer {
   private parseName(): string {
     let name = this.chr;
     this.eatWhile(c => {
-      if (!CHAR_IS_VALID_NAME.test(c)) return false;
+      if (!this.isNameContinuation(c)) return false;
       name += c;
       return true;
     });
@@ -223,7 +218,7 @@ export class Lexer {
 
   private parseNumberLiteral(start: string) {
     this.eatWhile(c => {
-      if (!CHAR_IS_VALID_NUMBER_LITERAL.test(c)) return false;
+      if (!this.isNumberContinuation(c)) return false;
 
       if (c !== '_') start += c;
       return true;
@@ -237,23 +232,79 @@ export class Lexer {
       throw new Error('Unexpected mode required " | \' | `');
     }
 
+    if (mode === '`') return this.consumeRawString();
+    return this.consumeQuotedString(mode);
+  }
+
+  private consumeQuotedString(quote: string) {
     let stringContent = '';
-    const isTemplate = mode === '`';
 
     this.eatWhile(c => {
-      // Todo escape characters
-      if (c === mode || (!isTemplate && c === '\n')) return false;
+      if (c === '\\') {
+        const next = this.chars.peekNext2();
+        if (next === quote || next.match(/[fnrt\\]/)) {
+          const escape = this.getEscapeCharacter(next);
+
+          if (escape !== null) {
+            stringContent += escape;
+            this.nextChar(); // skip f,n,r,t..
+          }
+          return true;
+        }
+      }
+
+      if (c === quote || c === '\n') return false;
       stringContent += c;
       return true;
     });
 
-    this.nextChar(); // TODO throw error if next is not mode
+    if (this.nextChar() !== quote)
+      throw BlockFormulaError.ParseError(
+        ParseErrorCode.UnterminatedLiteral,
+        'Bad termination of string'
+      );
+
+    return new LiteralToken<string>(TokenKind.String, this.span, stringContent);
+  }
+
+  private consumeRawString() {
+    // template strings are raw
+    let stringContent = '';
+    this.eatWhile(c => {
+      if (c !== '`') {
+        stringContent += c;
+        return true;
+      }
+      return false;
+    });
+
+    if (this.chars.peekNext() !== '`')
+      throw BlockFormulaError.ParseError(
+        ParseErrorCode.UnterminatedLiteral,
+        'Bad termination of string'
+      );
+
+    this.nextChar(); // eat `
 
     return new LiteralToken<string>(
-      isTemplate ? TokenKind.FormatString : TokenKind.String,
+      TokenKind.RawString,
       this.span,
       stringContent
     );
+  }
+
+  private getEscapeCharacter(c: string): string {
+    const escapeMap: Record<string, string> = {
+      n: '\n',
+      f: '\f',
+      t: '\t',
+      r: '',
+      "'": "'",
+      '"': '"',
+      '`': '`',
+      '\\': '\\',
+    };
+    return escapeMap[c] ?? null;
   }
 
   private consumeComment(mode: 'inline' | 'block') {
@@ -282,6 +333,27 @@ export class Lexer {
     return new Token(tokenKind, this.span); // Add position
   }
 
+  private isNumberStart(c: string) {
+    return c >= '0' && c <= '9';
+  }
+
+  private isNumberContinuation(c: string) {
+    return c === '_' || (c >= '0' && c <= '9');
+  }
+
+  private isNameStart(c: string) {
+    return c === '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+  }
+
+  private isNameContinuation(c: string) {
+    return (
+      c === '_' ||
+      (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9')
+    );
+  }
+
   [Symbol.iterator](): Iterator<Token<unknown>> {
     const clone = new Lexer(this.source);
 
@@ -294,14 +366,6 @@ export class Lexer {
       },
     };
   }
-}
-
-export function isValidNumberChar(c: string) {
-  return c === '_' || (c >= '0' && c <= '9');
-}
-
-export function isDigit(c: string) {
-  return c >= '0' && c <= '9';
 }
 
 function normalizeString(str: string) {

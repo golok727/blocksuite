@@ -1,10 +1,11 @@
-export enum LexErrorCode {
+export enum ParseErrorCode {
   Unknown = 0,
   UnexpectedEOF,
   UnexpectedToken,
+  UnterminatedLiteral,
 }
 
-export enum ParseErrorCode {
+export enum SyntaxErrorCode {
   Unknown = 0,
 }
 

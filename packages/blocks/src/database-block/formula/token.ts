@@ -2,7 +2,7 @@ import { type SrcSpan } from './span.js';
 
 export enum TokenKind {
   Name = 'lit:Name',
-  FormatString = 'lit:FormatString',
+  RawString = 'lit:RawString',
   Number = 'lit:Number',
   String = 'lit:String',
   Bool = 'lit:Bool',
@@ -103,9 +103,7 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
   }
 
   isString(): this is LiteralToken<string> {
-    return (
-      this.kind === TokenKind.String || this.kind === TokenKind.FormatString
-    );
+    return this.kind === TokenKind.String || this.kind === TokenKind.RawString;
   }
 
   isBool(): this is LiteralToken<boolean> {

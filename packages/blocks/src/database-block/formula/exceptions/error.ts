@@ -1,42 +1,42 @@
 import type {
-  LexErrorCode,
   ParseErrorCode,
   RuntimeErrorCode,
+  SyntaxErrorCode,
 } from './codes.js';
 
 export enum ErrorType {
-  LexError,
   ParseError,
+  SyntaxError,
   RuntimeError,
 }
 
-export class BlockScriptError extends Error {
+export class BlockFormulaError extends Error {
   constructor(
     public readonly type: ErrorType,
-    public readonly code: LexErrorCode | ParseErrorCode | RuntimeErrorCode,
+    public readonly code: ParseErrorCode | SyntaxErrorCode | RuntimeErrorCode,
     message?: string
   ) {
     super(message);
   }
 
-  static LexError(code: LexErrorCode, message?: string) {
-    return new BlockScriptError(
-      ErrorType.LexError,
+  static ParseError(code: ParseErrorCode, message?: string) {
+    return new BlockFormulaError(
+      ErrorType.ParseError,
       code,
       `LexError: ${message}`
     );
   }
 
-  static ParseError(code: LexErrorCode, message?: string) {
-    return new BlockScriptError(
-      ErrorType.ParseError,
+  static SyntaxError(code: ParseErrorCode, message?: string) {
+    return new BlockFormulaError(
+      ErrorType.SyntaxError,
       code,
       `ParseError: ${message}`
     );
   }
 
-  static RuntimeError(code: LexErrorCode, message?: string) {
-    return new BlockScriptError(
+  static RuntimeError(code: ParseErrorCode, message?: string) {
+    return new BlockFormulaError(
       ErrorType.RuntimeError,
       code,
       `ParseError: ${message}`

@@ -5,7 +5,8 @@ import { TokenKind } from '../../../database-block/formula/token.js';
 
 describe('Lexer', () => {
   test('token gen', () => {
-    const src = `let a = 'Hello  World'`;
+    const src = `let a = "Hello World"`;
+
     const lex = new Lexer(src);
     const tokens = Array.from(lex).filter(
       token => ![TokenKind.Whitespace, TokenKind.NewLine].includes(token.kind)
