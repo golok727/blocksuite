@@ -1,4 +1,4 @@
-import { type SrcSpan } from './span.js';
+import { SrcSpan } from './span.js';
 
 export enum TokenKind {
   Name = 'lit:Name',
@@ -29,6 +29,7 @@ export enum TokenKind {
   BitwiseOr = 'sym:BitwiseOr', // '|'
   BitwiseAnd = 'sym:BitwiseAnd', // '&&'
 
+  Question = 'sym:Question',
   Colon = 'sym:Colon',
   Semi = 'sym:Semi',
   Comma = 'sym:Comma',
@@ -76,22 +77,26 @@ export class Token<Value = unknown> {
 
   constructor(
     public readonly kind: TokenKind,
-    public readonly span: SrcSpan
+    public readonly start: number,
+    public readonly end: number
   ) {}
+
+  get span() {
+    return new SrcSpan(this.start, this.end);
+  }
 }
 
 export type LiteralTokenDataTypes = number | string | boolean;
 export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
-  constructor(
-    kind: TokenKind,
-    span: SrcSpan,
-    public data: Type
-  ) {
+  readonly data: Type;
+  constructor(kind: TokenKind, start: number, end: number, data: Type) {
     if (!kind.startsWith('lit:'))
       throw new Error(
         'Literal Token must be of type number | string | boolean'
       );
-    super(kind, span);
+
+    super(kind, start, end);
+    this.data = data;
   }
 
   isName(): this is LiteralToken<string> {
@@ -164,6 +169,7 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '!=': TokenKind.NotEq,
 
   ':': TokenKind.Colon,
+  '?': TokenKind.Question,
   ';': TokenKind.Semi,
 
   '->': TokenKind.ThinArrow,

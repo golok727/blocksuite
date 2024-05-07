@@ -1,5 +1,5 @@
 import { EOF_CHAR } from '../constants.js';
-import { Peekable } from './index.js';
+import { Peekable } from '../utils/index.js';
 
 /**
  * Represents a cursor for traversing any iterable.

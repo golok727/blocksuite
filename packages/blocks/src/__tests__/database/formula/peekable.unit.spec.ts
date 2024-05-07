@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { Peekable } from '../../../database-block/formula/lexer/peekable.js';
+import { Peekable } from '../../../database-block/formula/utils/peekable.js';
 
 describe('peekable test', () => {
   const values = [1, 2, 3, 4, 5, 6, 7];

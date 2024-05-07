@@ -4,6 +4,21 @@ export class SrcSpan {
     public readonly end: number
   ) {}
 
+  get length() {
+    return this.end - this.start;
+  }
+
+  merge(other: SrcSpan) {
+    return new SrcSpan(
+      Math.min(this.start, other.start),
+      Math.max(this.end, other.end)
+    );
+  }
+
+  sourceText(source: string) {
+    return source.slice(this.start, this.end);
+  }
+
   contains(index: number): boolean {
     return index >= this.start && index <= this.end;
   }
@@ -11,8 +26,4 @@ export class SrcSpan {
   toString() {
     return `[[ Start: ${this.start} , End: ${this.end} ]]`;
   }
-}
-
-export function Span(start: number, end: number) {
-  return new SrcSpan(start, end);
 }

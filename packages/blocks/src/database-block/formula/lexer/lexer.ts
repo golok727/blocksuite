@@ -9,29 +9,51 @@ import {
   Token,
   TokenKind,
 } from '../token.js';
-import { Cursor } from './cursor.js';
+import { Cursor } from '../utils/cursor.js';
+import type { LiteralTokenDataTypes } from './../token.js';
 
+type LexerRule = (c: string, lexer: Lexer) => boolean;
 export class Lexer {
-  private chars: Cursor<string>;
-  private location: number = 0;
+  private rules: Set<LexerRule> = new Set();
 
-  // @ts-ignore
+  private chars: Cursor<string>;
+
+  private pos: number = 0;
   private chr: string = EOF_CHAR;
-  constructor(public source: string) {
+  constructor(public readonly source: string) {
     this.source = normalizeString(source);
     this.chars = new Cursor(this.source);
-    this.location = this.chars.range;
-    this.nextChar();
+
+    // start up the lexer
+    this.chr = this.peekNext();
+    this.pos = this.chars.range;
   }
 
   advance(): Token {
-    const token = this.consume();
-
-    // reset
     this.beginRange();
     this.nextChar();
 
-    return token;
+    return this.lex();
+  }
+  /**
+   * @param rule A rule is a function which allows to skip to next character in the stream if the return value is false
+   */
+  addRule(rule: LexerRule) {
+    this.rules.add(rule);
+    return this;
+  }
+
+  removeRule(rule: LexerRule) {
+    this.rules.delete(rule);
+    return this;
+  }
+
+  reset() {
+    this.chars = new Cursor(this.source);
+    // start up the lexer
+    this.chr = this.peekNext();
+    this.pos = this.chars.range;
+    return this;
   }
 
   peekNext() {
@@ -47,11 +69,34 @@ export class Lexer {
   }
 
   isEOF() {
-    return this.chars.isEOF();
+    return this.chr === EOF_CHAR || this.chars.isEOF(); // just for optimization
   }
 
-  private get position() {
-    return new SrcSpan(this.location, this.location + this.chars.range);
+  // Internals
+  /**
+   * start a new range for the new token
+   */
+  private beginRange() {
+    this.pos += this.chars.range;
+    this.chars.resetRange();
+  }
+
+  private get span() {
+    return new SrcSpan(this.pos, this.pos + this.chars.range);
+  }
+
+  /**
+   * Create a base token
+   */
+  private createToken(kind: TokenKind) {
+    return new Token(kind, this.pos, this.pos + this.chars.range);
+  }
+
+  /**
+   * Create a literal token
+   */
+  private createLitToken(kind: TokenKind, data: LiteralTokenDataTypes) {
+    return new LiteralToken(kind, this.pos, this.pos + this.chars.range, data);
   }
 
   /**
@@ -76,16 +121,27 @@ export class Lexer {
     return str;
   }
 
-  private beginRange() {
-    this.location += this.chars.range;
-    this.chars.resetRange();
+  private applyRules(c: string) {
+    if (c === EOF_CHAR) return true;
+
+    for (const rule of this.rules) {
+      if (!rule(c, this)) return false;
+    }
+    return true;
   }
 
-  private consume(): Token {
+  /**
+   *
+   * The main boy who consumes the current char and returns a token.
+   */
+  private lex(): Token {
     const c = this.chr;
+
+    if (!this.applyRules(c)) return this.advance();
+
     switch (c) {
       case EOF_CHAR:
-        return new Token(TokenKind.Eof, this.position);
+        return this.createToken(TokenKind.Eof);
 
       case "'":
       case '"':
@@ -105,6 +161,7 @@ export class Lexer {
       }
       case '!': {
         if (this.chars.peekNext() === '=') {
+          this.nextChar();
           return this.lexSymbol('!=');
         }
         return this.lexSymbol(c);
@@ -153,6 +210,7 @@ export class Lexer {
       }
       case '@':
       case ':':
+      case '?':
       case ';':
       case '&':
       case '|':
@@ -165,8 +223,8 @@ export class Lexer {
       case '{':
       case '}':
       case '+':
-      case ',':
       case '*':
+      case ',':
       case ' ':
       case '\t':
       case '\n':
@@ -179,20 +237,20 @@ export class Lexer {
             const name = this.lexName();
             const keyword = this.getKeyword(name);
             if (keyword) {
-              return new Token(keyword, this.position);
+              return this.createToken(keyword);
             }
-            return new LiteralToken<string>(
-              TokenKind.Name,
-              this.position,
-              name
-            );
+
+            if (name === 'true' || name === 'false')
+              return this.createLitToken(TokenKind.Bool, name === 'true');
+
+            return this.createLitToken(TokenKind.Name, name);
           }
         }
 
         throw BlockFormulaError.SyntaxError(
           SyntaxErrorCode.UnexpectedToken,
           `Unexpected token ${c}`,
-          this.position
+          this.span
         );
       }
     }
@@ -237,19 +295,19 @@ export class Lexer {
   private lexBinary(): Token {
     const stringContent = this.eatWhile(this.isValidBinaryChar);
     const num = parseInt(stringContent, 2);
-    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+    return this.createLitToken(TokenKind.Number, num);
   }
 
   private lexHex(): Token {
     const stringContent = this.eatWhile(this.isValidHexChar);
     const num = parseInt(stringContent, 16);
-    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+    return this.createLitToken(TokenKind.Number, num);
   }
 
   private lexOctal(): Token {
     const stringContent = this.eatWhile(this.isValidOctal);
     const num = parseInt(stringContent, 8);
-    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+    return this.createLitToken(TokenKind.Number, num);
   }
   // Todo need a better one
   private lexDecimal(): Token {
@@ -266,7 +324,7 @@ export class Lexer {
     stringContent.replace(/_/g, '');
     const num = isFloat ? parseFloat(stringContent) : parseInt(stringContent);
 
-    return new LiteralToken<number>(TokenKind.Number, this.position, num);
+    return this.createLitToken(TokenKind.Number, num);
   }
 
   private lexStringLiteral() {
@@ -310,16 +368,34 @@ export class Lexer {
         'Bad termination of string'
       );
 
-    return new LiteralToken<string>(
-      TokenKind.String,
-      this.position,
-      stringContent
-    );
+    return this.createLitToken(TokenKind.String, stringContent);
   }
 
   private consumeTemplateString() {
     // template strings are raw
-    const stringContent = this.eatWhile(c => c !== '`');
+    let stringContent = '';
+
+    this.eatWhile(c => {
+      if (c === '\\') {
+        const next = this.peekNext2();
+        const escape = this.getEscapeCharacter(next);
+
+        if (escape !== null) {
+          stringContent += escape;
+          this.nextChar();
+        } else {
+          // TODO can improve this with \x
+          stringContent += c;
+        }
+
+        return true;
+      }
+
+      if (c === '`') return false;
+
+      stringContent += c;
+      return true;
+    });
 
     if (this.chars.peekNext() !== '`')
       throw BlockFormulaError.SyntaxError(
@@ -329,11 +405,7 @@ export class Lexer {
 
     this.nextChar(); // eat `
 
-    return new LiteralToken<string>(
-      TokenKind.TemplateString,
-      this.position,
-      stringContent
-    );
+    return this.createLitToken(TokenKind.TemplateString, stringContent);
   }
 
   private getEscapeCharacter(c: string): string {
@@ -348,20 +420,19 @@ export class Lexer {
         if (c === '*' && this.peekNext2() === '/') return false;
         return true;
       });
+      if (this.isEOF()) throw this.createUnexpectedTokenError('Expected */');
+      this.nextChar();
+      this.nextChar();
     }
 
-    if (this.isEOF()) throw this.createUnexpectedTokenError('Expected */');
-    this.nextChar();
-    this.nextChar();
-
-    return new Token(TokenKind.Comment, this.position);
+    return this.createToken(TokenKind.Comment);
   }
 
   private createUnexpectedTokenError(message: string) {
     return BlockFormulaError.SyntaxError(
       SyntaxErrorCode.UnexpectedToken,
       message,
-      this.position
+      this.span
     );
   }
 
@@ -371,10 +442,10 @@ export class Lexer {
       throw BlockFormulaError.SyntaxError(
         SyntaxErrorCode.UnexpectedToken,
         `Unexpected symbol ${symbol}`,
-        this.position
+        this.span
       );
 
-    return new Token(tokenKind, this.position);
+    return this.createToken(tokenKind);
   }
 
   private isNumberStart(c: string) {
@@ -414,12 +485,11 @@ export class Lexer {
 
   [Symbol.iterator](): Iterator<Token<unknown>> {
     const clone = new Lexer(this.source);
-
-    let done = false;
+    clone.rules = new Set(this.rules);
     return {
       next() {
         const value = clone.advance();
-        if (value.kind === TokenKind.Eof) done = true;
+        const done = value.kind === TokenKind.Eof;
         return { value, done };
       },
     };
