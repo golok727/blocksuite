@@ -2,58 +2,57 @@ import { EOF_CHAR } from '../constants.js';
 import { Peekable } from './index.js';
 
 /**
- * Represents a cursor for traversing a source string character by character.
+ * Represents a cursor for traversing any iterable.
  */
-
 export class Cursor<Item> {
-  private chars: Peekable<Item>;
+  private items: Peekable<Item>;
   private tokensToEat: number;
 
   constructor(iterable: Iterable<Item>) {
-    this.chars = new Peekable(iterable);
-    this.tokensToEat = this.chars.remaining;
+    this.items = new Peekable(iterable);
+    this.tokensToEat = this.items.remaining;
   }
 
   get range() {
-    return this.tokensToEat - this.chars.remaining;
+    return this.tokensToEat - this.items.remaining;
   }
 
   resetRange() {
-    this.tokensToEat = this.chars.remaining;
+    this.tokensToEat = this.items.remaining;
   }
 
   peekNext() {
-    return this.chars.peek();
+    return this.items.peek();
   }
 
   peekNext2() {
-    const iter = this.chars.clone();
+    const iter = this.items.clone();
     iter.next();
     return iter.peek();
   }
 
   peekNext3() {
-    const iter = this.chars.clone()!;
+    const iter = this.items.clone();
     iter.next();
     iter.next();
     return iter.peek();
   }
 
   next() {
-    return this.chars.next() ?? EOF_CHAR;
+    return this.items.next() ?? EOF_CHAR;
   }
 
   eatWhile(f: (s: Item | undefined) => boolean) {
     while (!this.isEOF() && f(this.peekNext())) {
-      this.chars.next();
+      this.items.next();
     }
   }
 
   toString() {
-    return this.chars.fold((item, c) => item + c, '');
+    return this.items.fold((item, c) => item + c, '');
   }
 
   isEOF() {
-    return this.chars.done();
+    return this.items.done();
   }
 }
