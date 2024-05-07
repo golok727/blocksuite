@@ -7,6 +7,10 @@ export class SrcSpan {
   contains(index: number): boolean {
     return index >= this.start && index <= this.end;
   }
+
+  toString() {
+    return `[[ Start: ${this.start} , End: ${this.end} ]]`;
+  }
 }
 
 export function Span(start: number, end: number) {

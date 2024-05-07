@@ -13,7 +13,7 @@ import { Cursor } from './cursor.js';
 
 export class Lexer {
   private chars: Cursor<string>;
-  private location: number;
+  private location: number = 0;
 
   // @ts-ignore
   private chr: string = EOF_CHAR;
@@ -54,10 +54,15 @@ export class Lexer {
     return new SrcSpan(this.location, this.location + this.chars.range);
   }
 
+  /**
+   * eats the next char and returns it. prefer it over this.chars.next()
+   */
   private nextChar() {
     return (this.chr = this.chars.next());
   }
-
+  /**
+   * advances till the return of the callback fn is true and returns the string of eaten char
+   */
   private eatWhile(f: (c: string) => boolean) {
     let str = '';
     this.chars.eatWhile(c => {
@@ -91,8 +96,10 @@ export class Lexer {
       case '/': {
         const next = this.chars.peekNext();
 
-        if (next === '*' || next === '/')
-          return this.lexComment(next === '*' ? 'block' : 'inline');
+        if (next === '/' || next === '*') {
+          this.nextChar();
+          return this.lexComment(next === '/' ? 'inline' : 'block');
+        }
 
         return this.lexSymbol(c);
       }
@@ -135,7 +142,7 @@ export class Lexer {
         if (count <= 3) {
           return this.lexSymbol(c.repeat(count));
         }
-        throw new Error('Unreachable code detected @consume(.)');
+        throw new Error('@@internal Unreachable code detected Lexer.consume()');
       }
       case '-': {
         if (this.peekNext() === '>') {
@@ -184,7 +191,8 @@ export class Lexer {
 
         throw BlockFormulaError.SyntaxError(
           SyntaxErrorCode.UnexpectedToken,
-          `Unexpected token ${c}`
+          `Unexpected token ${c}`,
+          this.position
         );
       }
     }
@@ -192,11 +200,7 @@ export class Lexer {
 
   private lexName(): string {
     let name = this.chr;
-    this.eatWhile(c => {
-      if (!this.isNameContinuation(c)) return false;
-      name += c;
-      return true;
-    });
+    name += this.eatWhile(this.isNameContinuation);
     return name;
   }
 
@@ -293,7 +297,9 @@ export class Lexer {
 
         return true;
       }
+
       if (c === quote || c === '\n') return false;
+
       stringContent += c;
       return true;
     });
@@ -313,14 +319,7 @@ export class Lexer {
 
   private consumeTemplateString() {
     // template strings are raw
-    let stringContent = '';
-    this.eatWhile(c => {
-      if (c !== '`') {
-        stringContent += c;
-        return true;
-      }
-      return false;
-    });
+    const stringContent = this.eatWhile(c => c !== '`');
 
     if (this.chars.peekNext() !== '`')
       throw BlockFormulaError.SyntaxError(
@@ -343,28 +342,39 @@ export class Lexer {
 
   private lexComment(mode: 'inline' | 'block') {
     if (mode === 'inline') {
-      this.eatWhile(s => {
-        return s !== '\n';
-      });
+      this.eatWhile(s => s !== '\n');
     } else {
-      if (this.chars.peekNext() !== '*')
-        throw new Error('Invalid block comment'); // should't happen but who knows
-      this.nextChar();
       this.eatWhile(c => {
-        return !(c === '*' && this.chars.peekNext2() === '/');
+        if (c === '*' && this.peekNext2() === '/') return false;
+        return true;
       });
-      // TODO may be add error if eof
-      this.nextChar();
-      this.nextChar();
     }
+
+    if (this.isEOF()) throw this.createUnexpectedTokenError('Expected */');
+    this.nextChar();
+    this.nextChar();
 
     return new Token(TokenKind.Comment, this.position);
   }
 
+  private createUnexpectedTokenError(message: string) {
+    return BlockFormulaError.SyntaxError(
+      SyntaxErrorCode.UnexpectedToken,
+      message,
+      this.position
+    );
+  }
+
   private lexSymbol(symbol: string) {
     const tokenKind = SymbolToTokenKindMap[symbol];
-    if (tokenKind === undefined) throw new Error(`Unexpected symbol ${symbol}`);
-    return new Token(tokenKind, this.position); // Add position
+    if (tokenKind === undefined)
+      throw BlockFormulaError.SyntaxError(
+        SyntaxErrorCode.UnexpectedToken,
+        `Unexpected symbol ${symbol}`,
+        this.position
+      );
+
+    return new Token(tokenKind, this.position);
   }
 
   private isNumberStart(c: string) {
