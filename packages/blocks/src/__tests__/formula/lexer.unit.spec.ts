@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
-import { Lexer } from '../../../database-block/formula/lexer/lexer.js';
+import { Lexer } from '../../database-block/formula/lexer/lexer.js';
 import {
   KeywordToTokenKindMap,
   LiteralToken,
   SymbolToTokenKindMap,
   TokenKind,
-} from '../../../database-block/formula/token.js';
+} from '../../database-block/formula/token.js';
 
 describe('Lexer', () => {
   test('basic', () => {
