@@ -1,15 +1,13 @@
 export enum ParseErrorCode {
   Unknown = 0,
-  UnexpectedEOF,
-  UnexpectedToken,
-  UnterminatedLiteral,
 }
 
 export enum SyntaxErrorCode {
   Unknown = 0,
   UnexpectedToken,
-  UnterminatedLiteral,
+  UnterminatedStringLiteral,
   UnexpectedNumber,
+  BadNumberLiteral,
 }
 
 export enum RuntimeErrorCode {

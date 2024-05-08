@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { EOF_CHAR } from '../../database-block/formula/constants.js';
 import { Lexer } from '../../database-block/formula/lexer/lexer.js';
 import {
   KeywordToTokenKindMap,
@@ -152,7 +153,32 @@ Code\\\`\`
     // template strings allows new line in them :)
   });
 
-  test('boolean', () => {
+  test('number literal', () => {
+    const src =
+      '1000 1_00_1000 10.9 0xaf 0b10 0o17 1e2 1e+3 1e-3 1_00_100.1_00_100';
+    const lexer = new Lexer(src).addRule(c => c != ' ');
+
+    const tokens = [...lexer] as LiteralToken<number>[];
+    expect(tokens.map(t => t.data)).toEqual([
+      1000, 1001000, 10.9, 0xaf, 0b10, 0o17, 1e2, 1e3, 1e-3, 100100.1001,
+    ]);
+  });
+
+  test('bad number literal', () => {
+    const src = '9. 1e 1e+ 1e-';
+    const errors = [
+      `( SyntaxError ) -> Expected a valid digit after "." but got "${EOF_CHAR}"`,
+      `( SyntaxError ) -> Expected a valid digit after "e" but got "${EOF_CHAR}"`,
+      `( SyntaxError ) -> Signed exponents should follow a value or remove the "+"`,
+      `( SyntaxError ) -> Signed exponents should follow a value or remove the "-"`,
+    ];
+    src.split(' ').forEach((chunk, index) => {
+      const lexer = new Lexer(chunk).addRule(c => c != ' ');
+      expect(() => lexer.advance()).toThrow(errors[index]);
+    });
+  });
+
+  test('boolean literal', () => {
     const src = `true false !true !false`;
 
     const lexer = new Lexer(src).addRule(c => c !== ' ');

@@ -284,45 +284,83 @@ export class Lexer {
           this.nextChar();
           return this.lexBinary();
         }
+        case '0': {
+          throw this.createBadNumberLiteralError(
+            'Bad number literal. Did you mean 0o<value> for octal?'
+          );
+        }
         default: {
-          return this.lexDecimal();
+          return this.lexIntOrFloat();
         }
       }
     }
-    return this.lexDecimal();
+    return this.lexIntOrFloat();
   }
 
   private lexBinary(): Token {
     const stringContent = this.eatWhile(this.isValidBinaryChar);
     const num = parseInt(stringContent, 2);
+    if (isNaN(num))
+      throw this.createBadNumberLiteralError('Invalid Binary Digit');
     return this.createLitToken(TokenKind.Number, num);
   }
 
   private lexHex(): Token {
     const stringContent = this.eatWhile(this.isValidHexChar);
     const num = parseInt(stringContent, 16);
+    if (isNaN(num)) throw this.createBadNumberLiteralError('Invalid Hex digit');
     return this.createLitToken(TokenKind.Number, num);
   }
 
   private lexOctal(): Token {
     const stringContent = this.eatWhile(this.isValidOctal);
     const num = parseInt(stringContent, 8);
+    if (isNaN(num))
+      throw this.createBadNumberLiteralError('Invalid Octal Digit');
     return this.createLitToken(TokenKind.Number, num);
   }
-  // Todo need a better one
-  private lexDecimal(): Token {
-    let stringContent = this.chr === '0' ? '' : this.chr;
+
+  private lexIntOrFloat(): Token {
+    let stringContent = this.chr;
+
     let isFloat = false;
-    stringContent += this.eatWhile(c => {
-      if (c === '.') {
-        isFloat = true;
-        return true;
+
+    stringContent += this.eatWhile(this.isNumberContinuation);
+
+    const pointOrExponent = this.peekNext();
+    const isPoint = pointOrExponent === '.';
+    const isExponent = pointOrExponent === 'e' || pointOrExponent === 'E';
+
+    if (isPoint || isExponent) {
+      // 0. , 1., ... or 1e or 1e- or 1e+
+      isFloat = true;
+      stringContent += this.nextChar(); // eat . | e | E
+
+      const nextChar = this.peekNext();
+
+      if (isExponent && (nextChar === '-' || nextChar === '+')) {
+        const plusOrMinus = this.nextChar(); // for span
+        if (!this.isNumberStart(this.peekNext())) {
+          throw this.createBadNumberLiteralError(
+            `Signed exponents should follow a value or remove the "${plusOrMinus}"`
+          );
+        }
+        stringContent += plusOrMinus;
+      } else if ((isExponent || isPoint) && !this.isNumberStart(nextChar)) {
+        throw this.createBadNumberLiteralError(
+          `Expected a valid digit after "${pointOrExponent}" but got "${nextChar}"`
+        );
       }
-      if (c === '_') return true;
-      return this.isDecimalContinuation(c);
-    });
-    stringContent.replace(/_/g, '');
+      // eat the rest of the decimal part
+      stringContent += this.eatWhile(this.isNumberContinuation);
+    }
+
+    stringContent = stringContent.replaceAll('_', '');
+
     const num = isFloat ? parseFloat(stringContent) : parseInt(stringContent);
+
+    if (isNaN(num))
+      throw this.createBadNumberLiteralError('Bad number literal');
 
     return this.createLitToken(TokenKind.Number, num);
   }
@@ -364,7 +402,7 @@ export class Lexer {
 
     if (this.nextChar() !== quote)
       throw BlockFormulaError.SyntaxError(
-        SyntaxErrorCode.UnterminatedLiteral,
+        SyntaxErrorCode.UnterminatedStringLiteral,
         'Bad termination of string'
       );
 
@@ -399,7 +437,7 @@ export class Lexer {
 
     if (this.chars.peekNext() !== '`')
       throw BlockFormulaError.SyntaxError(
-        SyntaxErrorCode.UnterminatedLiteral,
+        SyntaxErrorCode.UnterminatedStringLiteral,
         'Bad termination of string'
       );
 
@@ -436,6 +474,14 @@ export class Lexer {
     );
   }
 
+  private createBadNumberLiteralError(message: string) {
+    return BlockFormulaError.SyntaxError(
+      SyntaxErrorCode.BadNumberLiteral,
+      message,
+      this.span
+    );
+  }
+
   private lexSymbol(symbol: string) {
     const tokenKind = SymbolToTokenKindMap[symbol];
     if (tokenKind === undefined)
@@ -466,7 +512,7 @@ export class Lexer {
     return c === '1' || c === '0';
   }
 
-  private isDecimalContinuation(c: string) {
+  private isNumberContinuation(c: string) {
     return c === '_' || (c >= '0' && c <= '9');
   }
 
