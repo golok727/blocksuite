@@ -5,7 +5,6 @@ export enum ExpressionKind {
   TemplateLiteral,
 
   Name,
-  NameDeclarator,
 
   Array,
   Object,
@@ -38,18 +37,9 @@ export interface TemplateLiteral extends BaseExpression {
   // placeholders etc.. will be made in future ~)
 }
 
-// let a = 10, b = 10
-//     ^^^^^^  ^^^^^^ -> NameDeclarator[]
-// ^^^^^^^^^^^^^^^^^^ -> NameDeclaration (STMT)
-export interface NameDeclarator extends BaseExpression {
-  kind: ExpressionKind.NameDeclarator;
-  value: string;
-  init: Expression | null;
-}
-
 // a b c ... any name
 export interface Name extends BaseExpression {
-  type: ExpressionKind.Name;
+  kind: ExpressionKind.Name;
   name: string;
 }
 
@@ -204,8 +194,8 @@ export interface ObjectExpression extends BaseExpression {
 
 export type Expression =
   | Literal
+  | Name
   | TemplateLiteral
-  | NameDeclarator
   | UnaryExpression
   | BinaryExpression
   | ConditionalExpression

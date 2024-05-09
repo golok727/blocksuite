@@ -5,7 +5,9 @@ import { Parser } from '../../database-block/formula/parser/parser.js';
 
 describe('Parser', () => {
   test('basic', () => {
-    const src = `1, 2, 3, 4`;
+    const src = `const radha = "krsna"
+       const krsna = 'radha'
+       let hello = 1`;
     const lex = new Lexer(src);
     const parser = new Parser(lex);
     console.log(parser.parse().formula.body);

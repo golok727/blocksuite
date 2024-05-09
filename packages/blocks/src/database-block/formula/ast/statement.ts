@@ -1,5 +1,5 @@
 import type { SrcSpan } from '../span.js';
-import type { Expression, Name, NameDeclarator } from './expr.js';
+import type { Expression, Name } from './expr.js';
 
 export enum StatementKind {
   If,
@@ -8,7 +8,8 @@ export enum StatementKind {
   Block,
   While,
   For,
-  NameDecl,
+  NameDeclaration,
+  NameDeclarator,
 }
 
 interface BaseStatement {
@@ -61,8 +62,16 @@ export enum NameDeclarationType {
   Const = 'const',
 }
 
+// let a = 10, b = 10
+//     ^^^^^^  ^^^^^^ -> NameDeclarator[]
+// ^^^^^^^^^^^^^^^^^^ -> NameDeclaration (STMT)
+export interface NameDeclarator extends BaseStatement {
+  kind: StatementKind.NameDeclarator;
+  name: Name;
+  init: Expression | null;
+}
 export interface NameDeclaration extends BaseStatement {
-  kind: StatementKind.NameDecl;
+  kind: StatementKind.NameDeclaration;
   declarations: NameDeclarator[];
   type: NameDeclarationType;
 }
@@ -71,6 +80,7 @@ export type Statement =
   | NamedFunctionStatement
   | LambdaStatement
   | NameDeclaration
+  | NameDeclarator
   | WhileStatement
   | ForStatement
   | IfStatement

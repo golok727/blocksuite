@@ -1,8 +1,11 @@
 import type * as Ast from '../ast/index.js';
-import { SrcSpan } from '../span.js';
+import type { SrcSpan } from '../span.js';
 import type { Token } from '../token.js';
 import { TokenKind } from '../token.js';
 import type { Lexer } from './lexer.js';
+
+const Skip = Symbol('skip_token');
+type SkipToken = typeof Skip;
 
 export interface Parsed {
   formula: Ast.Formula;
@@ -32,36 +35,68 @@ export class Parser {
   }
 
   private parseFormula(): Ast.Formula {
-    const body = this.series<Ast.Statement>(
-      this.parseStatements,
-      TokenKind.Comma
-    );
-
-    const span = body.reduce(
-      (bodySpan, stmt) => stmt.span.merge(bodySpan),
-      new SrcSpan(0, 0)
-    );
-
-    const formula: Ast.Formula = {
-      type: 'formula',
-      body,
-      span,
-    };
-
-    return formula;
+    throw new Error('noop');
+    // const body = this.series<Ast.Statement>(
+    //   this.parseStatements,
+    //   TokenKind.Comma
+    // );
+    // const span = body.reduce(
+    //   (bodySpan, stmt) => stmt.span.merge(bodySpan),
+    //   new SrcSpan(0, 0)
+    // );
+    // const formula: Ast.Formula = {
+    //   type: 'formula',
+    //   body,
+    //   span,
+    // };
+    // return formula;
   }
 
-  private parseStatements = (): Ast.Statement | null => {
-    return null;
+  private nextToken() {
+    const tok = this.tok1;
+    this.tok1 = this.lex.advance();
+    this.tok0 = tok;
+    return tok;
+  }
+
+  /// PArser
+  private parseStatements: SeriesParseFn<Ast.Statement> = () => {
+    throw new Error('Bad');
   };
 
-  private series<R>(parse: () => R | null, delim?: TokenKind): R[] {
+  private parseNameDeclaration(): Ast.NameDeclaration {
+    throw new Error('');
+  }
+
+  private parseDeclarations(): [Ast.NameDeclarator[], span: SrcSpan] {
+    throw new Error('not implemented');
+  }
+
+  private parseDeclarator: SeriesParseFn<Ast.NameDeclarator> = () => {
+    throw new Error('not implemented');
+  };
+
+  private parseExpression() {
+    throw new Error('noop');
+  }
+
+  // PArsing
+
+  private skipOneIf(kind: TokenKind) {
+    if (this.tok0.kind === TokenKind.Eof || this.tok0.kind === kind) {
+      return this.nextToken();
+    }
+    return null;
+  }
+
+  private series<R>(parse: SeriesParseFn<R>, delim?: TokenKind): R[] {
     const series: R[] = [];
     const run = true;
 
     while (run) {
       const parsed = parse();
-      if (!parsed) break;
+      if (parsed === Skip) continue;
+      if (parsed === null) break;
 
       series.push(parsed);
 
@@ -73,22 +108,6 @@ export class Parser {
     }
     return series;
   }
-
-  private skipOneIf(kind: TokenKind) {
-    if (this.tok0.kind === kind) {
-      return this.nextToken();
-    }
-    return null;
-  }
-
-  private advance() {
-    this.nextToken();
-  }
-
-  private nextToken() {
-    const tok = this.tok1;
-    this.tok1 = this.lex.advance();
-    this.tok0 = tok;
-    return tok;
-  }
 }
+
+type SeriesParseFn<R> = () => R | null | SkipToken;
