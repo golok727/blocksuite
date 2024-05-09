@@ -1,18 +1,38 @@
 export class SrcSpan {
   constructor(
-    public readonly start: number,
-    public readonly end: number
+    public start: number,
+    public end: number
   ) {}
 
   get length() {
     return this.end - this.start;
   }
 
+  // we will be merging quite a lot so don't use math.min and math.max
   merge(other: SrcSpan) {
-    return new SrcSpan(
-      Math.min(this.start, other.start),
-      Math.max(this.end, other.end)
-    );
+    let start = this.start;
+    let end = this.end;
+
+    if (other.start < this.start) {
+      start = other.start;
+    }
+    if (other.end > this.end) {
+      end = other.end;
+    }
+    return new SrcSpan(start, end);
+  }
+
+  mergeMut(other: SrcSpan) {
+    if (other.start < this.start) {
+      this.start = other.start;
+    }
+    if (other.end > this.end) {
+      this.end = other.end;
+    }
+  }
+
+  clone() {
+    return new SrcSpan(this.start, this.end);
   }
 
   sourceText(source: string) {
