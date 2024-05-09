@@ -2,6 +2,7 @@ import { EOF_CHAR, ESCAPE_CHARACTER_MAP } from '../constants.js';
 import { SyntaxErrorCode } from '../exceptions/codes.js';
 import { BlockFormulaError } from '../exceptions/error.js';
 import { SrcSpan } from '../span.js';
+import type { LiteralTokenDataTypes } from '../token.js';
 import {
   KeywordToTokenKindMap,
   LiteralToken,
@@ -10,22 +11,18 @@ import {
   TokenKind,
 } from '../token.js';
 import { Cursor } from '../utils/cursor.js';
-import type { LiteralTokenDataTypes } from './../token.js';
 
-type LexerRule = (c: string, lexer: Lexer) => boolean;
 export class Lexer {
-  private rules: Set<LexerRule> = new Set();
-
   private chars: Cursor<string>;
 
   private pos: number = 0;
-  private chr: string = EOF_CHAR;
+  private chr0: string = EOF_CHAR;
   constructor(public readonly source: string) {
     this.source = normalizeString(source);
     this.chars = new Cursor(this.source);
 
     // start up the lexer
-    this.chr = this.peekNext();
+    this.chr0 = this.peekNext();
     this.pos = this.chars.range;
   }
 
@@ -35,41 +32,25 @@ export class Lexer {
 
     return this.lex();
   }
-  /**
-   * @param rule A rule is a function which allows to skip to next character in the stream if the return value is false
-   */
-  addRule(rule: LexerRule) {
-    this.rules.add(rule);
-    return this;
-  }
-
-  removeRule(rule: LexerRule) {
-    this.rules.delete(rule);
-    return this;
-  }
 
   reset() {
     this.chars = new Cursor(this.source);
     // start up the lexer
-    this.chr = this.peekNext();
+    this.chr0 = this.peekNext();
     this.pos = this.chars.range;
     return this;
   }
 
-  peekNext() {
+  private peekNext() {
     return this.chars.peekNext() ?? EOF_CHAR;
   }
 
-  peekNext2() {
+  private peekNext2() {
     return this.chars.peekNext2() ?? EOF_CHAR;
   }
 
-  peekNext3() {
-    return this.chars.peekNext3() ?? EOF_CHAR;
-  }
-
   isEOF() {
-    return this.chr === EOF_CHAR || this.chars.isEOF(); // just for optimization
+    return this.chars.isEOF();
   }
 
   // Internals
@@ -103,7 +84,7 @@ export class Lexer {
    * eats the next char and returns it. prefer it over this.chars.next()
    */
   private nextChar() {
-    return (this.chr = this.chars.next());
+    return (this.chr0 = this.chars.next());
   }
   /**
    * advances till the return of the callback fn is true and returns the string of eaten char
@@ -114,30 +95,18 @@ export class Lexer {
       const v = f(c ?? EOF_CHAR);
       if (v) {
         str += c ?? EOF_CHAR;
-        this.chr = c ?? EOF_CHAR;
+        this.chr0 = c ?? EOF_CHAR;
       }
       return v;
     });
     return str;
   }
 
-  private applyRules(c: string) {
-    if (c === EOF_CHAR) return true;
-
-    for (const rule of this.rules) {
-      if (!rule(c, this)) return false;
-    }
-    return true;
-  }
-
   /**
-   *
-   * The main boy who consumes the current char and returns a token.
+   *  The main thing~
    */
   private lex(): Token {
-    const c = this.chr;
-
-    if (!this.applyRules(c)) return this.advance();
+    const c = this.chr0;
 
     switch (c) {
       case EOF_CHAR:
@@ -186,6 +155,15 @@ export class Lexer {
         return this.lexSymbol(c);
       }
       case '.': {
+        // unit.unit.unit()
+        // .. -> 1..9 [1 , 2, 3, ... 8]
+        // .= -> 1.=9 [1, 2, 3, 4 .. 9]
+        // [...unit1, 1, 2, ...unit2]
+        if (this.peekNext() === '=') {
+          this.nextChar();
+          return this.lexSymbol('.='); // for ranges
+        }
+
         let count = 1;
 
         this.eatWhile(c => {
@@ -208,6 +186,11 @@ export class Lexer {
         }
         return this.lexSymbol(c);
       }
+
+      case ' ':
+      case '\t': {
+        return this.advance(); // should skip whitespace
+      }
       case '@':
       case ':':
       case '?':
@@ -225,8 +208,6 @@ export class Lexer {
       case '+':
       case '*':
       case ',':
-      case ' ':
-      case '\t':
       case '\n':
         return this.lexSymbol(c);
       default: {
@@ -257,7 +238,7 @@ export class Lexer {
   }
 
   private lexName(): string {
-    let name = this.chr;
+    let name = this.chr0;
     name += this.eatWhile(this.isNameContinuation);
     return name;
   }
@@ -267,7 +248,7 @@ export class Lexer {
   }
 
   private lexNumberLiteral(): Token {
-    if (this.chr === '0') {
+    if (this.chr0 === '0') {
       switch (this.peekNext()) {
         case 'x':
         case 'X': {
@@ -321,7 +302,7 @@ export class Lexer {
   }
 
   private lexIntOrFloat(): Token {
-    let stringContent = this.chr;
+    let stringContent = this.chr0;
 
     let isFloat = false;
 
@@ -366,7 +347,7 @@ export class Lexer {
   }
 
   private lexStringLiteral() {
-    const mode = this.chr;
+    const mode = this.chr0;
     if (!['"', "'", '`'].includes(mode)) {
       throw new Error('Unexpected mode required " | \' | `');
     }
@@ -383,6 +364,7 @@ export class Lexer {
         const next = this.peekNext2();
         const escape = this.getEscapeCharacter(next);
 
+        // todo invalid escape error ?
         if (escape !== null) {
           stringContent += escape;
           this.nextChar();
@@ -531,7 +513,6 @@ export class Lexer {
 
   [Symbol.iterator](): Iterator<Token<unknown>> {
     const clone = new Lexer(this.source);
-    clone.rules = new Set(this.rules);
     return {
       next() {
         const value = clone.advance();

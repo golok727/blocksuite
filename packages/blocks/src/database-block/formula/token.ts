@@ -45,6 +45,7 @@ export enum TokenKind {
   FatArrow = 'sym:FatArrow',
 
   Dot = 'sym:Dot', // '.'
+  DotEq = 'sym:DotEq', // '.='
   DotDot = 'sym:DotDot', // '..'
   DotDotDot = 'sym:DotDotDot', // '...'
   At = 'sym:At', // '@'
@@ -52,7 +53,6 @@ export enum TokenKind {
 
   Comment = 'misc:Comment',
   NewLine = 'misc:NewLine',
-  Whitespace = 'misc:Whitespace',
   Unknown = 'misc:Unknown',
 
   // keywords
@@ -83,6 +83,14 @@ export class Token<Value = unknown> {
 
   get span() {
     return new SrcSpan(this.start, this.end);
+  }
+  /* Helper to make a dummy token */
+  static from(kind: TokenKind) {
+    return new Token(kind, -1, -1);
+  }
+
+  eq(other: Token) {
+    return this.kind === other.kind;
   }
 }
 
@@ -176,10 +184,9 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '=>': TokenKind.FatArrow,
 
   '.': TokenKind.Dot,
+  '.=': TokenKind.DotEq,
   '..': TokenKind.DotDot,
   '...': TokenKind.DotDotDot,
 
-  ' ': TokenKind.Whitespace,
-  '\t': TokenKind.Whitespace,
   '\n': TokenKind.NewLine,
 };

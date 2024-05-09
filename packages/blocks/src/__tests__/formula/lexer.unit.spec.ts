@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { EOF_CHAR } from '../../database-block/formula/constants.js';
-import { Lexer } from '../../database-block/formula/lexer/lexer.js';
+import { Lexer } from '../../database-block/formula/parser/lexer.js';
 import {
   KeywordToTokenKindMap,
   LiteralToken,
@@ -16,11 +16,10 @@ describe('Lexer', () => {
     // This is a comment
     /*Multi Line
      Comment*/`;
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
 
-    const tokens = [...lexer].filter(
-      t => ![TokenKind.Whitespace].includes(t.kind)
-    );
+    const tokens = [...lexer];
+
     expect(tokens.map(t => t.kind)).toEqual([
       TokenKind.Let,
       TokenKind.Name,
@@ -47,9 +46,15 @@ describe('Lexer', () => {
     ]);
   });
 
+  test('bad block comment', () => {
+    const src = '/*Hello world*';
+    const lex = new Lexer(src);
+    expect(() => [...lex]).toThrow('( SyntaxError ) -> Expected */');
+  });
+
   test('lex name', () => {
     const src = `let block = "suite"`;
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
     lexer.advance();
     const name = lexer.advance() as LiteralToken<string>;
     expect(name.isName()).toBe(true);
@@ -82,8 +87,29 @@ describe('Lexer', () => {
     /*Block Comment*/`;
     const lexer = new Lexer(src);
     const tokens = [...lexer];
-    const joined = tokens.map(({ span }) => span.sourceText(src)).join('');
-    expect(joined).toBe(src);
+    const joined = tokens.map(({ span }) => span.sourceText(src));
+    expect(joined).toEqual([
+      'let',
+      'a',
+      '=',
+      "'apple'",
+      '\n',
+      'let',
+      'b',
+      '=',
+      "'orange'",
+      '\n',
+      'return',
+      'a',
+      '+',
+      "''",
+      '+',
+      'b',
+      '\n',
+      '// this is a comment',
+      '\n',
+      '/*Block Comment*/',
+    ]);
   });
 
   test('comments', () => {
@@ -91,7 +117,7 @@ describe('Lexer', () => {
     /*Block
     Comment*/
     "String" // comment`;
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
     expect([...lexer].map(t => t.kind)).toEqual([
       TokenKind.Comment,
       TokenKind.NewLine,
@@ -116,7 +142,7 @@ Code\\\`\`
     `);
     const results = ['"Hello\nWorld"', "'Hello\nWorld'", '`Hello\nCode`'];
     sources.forEach((src, idx) => {
-      const lexer = new Lexer(src).addRule(c => c !== '\n');
+      const lexer = new Lexer(src);
 
       const string = [...lexer].filter(
         t => ![TokenKind.NewLine].includes(t.kind)
@@ -156,7 +182,7 @@ Code\\\`\`
   test('number literal', () => {
     const src =
       '1000 1_00_1000 10.9 0xaf 0b10 0o17 1e2 1e+3 1e-3 1_00_100.1_00_100';
-    const lexer = new Lexer(src).addRule(c => c != ' ');
+    const lexer = new Lexer(src);
 
     const tokens = [...lexer] as LiteralToken<number>[];
     expect(tokens.map(t => t.data)).toEqual([
@@ -173,7 +199,7 @@ Code\\\`\`
       `( SyntaxError ) -> Signed exponents should follow a value or remove the "-"`,
     ];
     src.split(' ').forEach((chunk, index) => {
-      const lexer = new Lexer(chunk).addRule(c => c != ' ');
+      const lexer = new Lexer(chunk);
       expect(() => lexer.advance()).toThrow(errors[index]);
     });
   });
@@ -181,7 +207,7 @@ Code\\\`\`
   test('boolean literal', () => {
     const src = `true false !true !false`;
 
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
     expect([...lexer].map(t => t.kind)).toEqual([
       TokenKind.Bool,
       TokenKind.Bool,
@@ -203,13 +229,8 @@ Code\\\`\`
 
   test('symbols and pairs', () => {
     const src = Object.keys(SymbolToTokenKindMap).join(' ');
-    const expected: TokenKind[] = [];
-    // we need to also test for the whitespace && \t so this is the way to do it
-    for (const token of Object.values(SymbolToTokenKindMap)) {
-      expected.push(token);
-      expected.push(TokenKind.Whitespace);
-    }
-    expected.pop();
+    const expected: TokenKind[] = Object.values(SymbolToTokenKindMap);
+
     const lexer = new Lexer(src);
     expect([...lexer].map(t => t.kind)).toEqual(expected);
   });
@@ -218,7 +239,7 @@ Code\\\`\`
     const src = Object.keys(KeywordToTokenKindMap).join(' ');
     const expected = Object.values(KeywordToTokenKindMap);
 
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
     expect([...lexer].map(t => t.kind)).toEqual(expected);
   });
 
@@ -230,15 +251,7 @@ Code\\\`\`
       Array.from({ length: 4 }, () => TokenKind.Name)
     );
 
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
+    const lexer = new Lexer(src);
     expect([...lexer].map(t => t.kind)).toEqual(expected);
-  });
-
-  test('rule', () => {
-    const src = 'let apple = "Apple"';
-    const lexer = new Lexer(src).addRule(c => c !== ' ');
-    expect([...lexer].find(t => t.kind === TokenKind.Whitespace)).toBe(
-      undefined
-    );
   });
 });
