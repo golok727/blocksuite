@@ -3,13 +3,10 @@ import type { SrcSpan } from '../span.js';
 export enum ExpressionKind {
   Literal,
   TemplateLiteral,
-
   Name,
-
   Array,
   Object,
   Property,
-
   Unary,
   Binary,
   Condition,
@@ -19,28 +16,48 @@ export enum ExpressionKind {
   Range,
 }
 
-interface BaseExpression {
+export interface Expression {
   kind: ExpressionKind;
   span: SrcSpan;
 }
 
-export interface Literal extends BaseExpression {
-  kind: ExpressionKind.Literal;
-  value: number | string | boolean;
+export class Literal implements Expression {
+  readonly kind = ExpressionKind.Literal;
+
+  constructor(
+    public value: number | string | boolean,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is Literal {
+    return expr.kind === ExpressionKind.Literal;
+  }
 }
 
-export interface TemplateLiteral extends BaseExpression {
-  kind: ExpressionKind.TemplateLiteral;
-  value: string;
-  // need to expand this
-  // expressions
-  // placeholders etc.. will be made in future ~)
+export class TemplateLiteral implements Expression {
+  readonly kind = ExpressionKind.TemplateLiteral;
+
+  constructor(
+    public value: string,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is TemplateLiteral {
+    return expr.kind === ExpressionKind.TemplateLiteral;
+  }
 }
 
-// a b c ... any name
-export interface Name extends BaseExpression {
-  kind: ExpressionKind.Name;
-  name: string;
+export class Name implements Expression {
+  readonly kind = ExpressionKind.Name;
+
+  constructor(
+    public name: string,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is Name {
+    return expr.kind === ExpressionKind.Name;
+  }
 }
 
 export enum BinaryOp {
@@ -58,148 +75,138 @@ export enum BinaryOp {
   Lt,
 }
 
-// -a -1 !a !false
 export enum UnaryOp {
   Not,
   Negate,
 }
 
-export interface UnaryExpression extends BaseExpression {
-  kind: ExpressionKind.Unary;
-  op: UnaryOp;
-  arg: Expression;
-}
+export class UnaryExpression implements Expression {
+  readonly kind = ExpressionKind.Unary;
+  constructor(
+    public op: UnaryOp,
+    public arg: Expression,
+    public span: SrcSpan
+  ) {}
 
-export interface BinaryExpression extends BaseExpression {
-  kind: ExpressionKind.Binary;
-  op: BinaryOp;
-  left: Expression;
-  right: Expression;
-}
-
-// 10 > a ? a : b
-export interface ConditionalExpression extends BaseExpression {
-  kind: ExpressionKind.Condition;
-  test: Expression;
-  consequent: Expression;
-  alternate: Expression;
-}
-
-export interface AssignmentExpression extends BaseExpression {
-  kind: ExpressionKind.Assignment;
-  left: Expression;
-  right: Expression;
-}
-
-/*
-  thing()
-
-  CallExpression {
-    callee: Name(thing)
-    args: []
+  static is(expr: Expression): expr is UnaryExpression {
+    return expr.kind === ExpressionKind.Unary;
   }
+}
 
-  thing(10, a)
+export class BinaryExpression implements Expression {
+  readonly kind = ExpressionKind.Binary;
+  constructor(
+    public left: Expression,
+    public op: UnaryOp,
+    public right: Expression,
+    public span: SrcSpan
+  ) {}
 
-  CallExpression {
-    callee: Name(thing)
-    args: [Literal(10), Name(a)]
+  static is(expr: Expression): expr is BinaryExpression {
+    return expr.kind === ExpressionKind.Binary;
   }
+}
 
-  cat.meow()
-  CallExpression {
-    callee: MemberExpression {
-      object: Name(cat), 
-      prop: Name(meow)
-    },
-    args: []
+export class ConditionalExpression implements Expression {
+  readonly kind = ExpressionKind.Condition;
+  constructor(
+    public test: Expression,
+    public consequent: Expression,
+    public alternate: Expression,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is ConditionalExpression {
+    return expr.kind === ExpressionKind.Condition;
   }
-
- 
- */
-export interface CallExpression extends BaseExpression {
-  kind: ExpressionKind.Call;
-  callee: Expression;
-  args: Expression[];
 }
 
-/* 
-Example
- let a =  unit.a.b
-          ^^^^^^^^
-  MemberExpression {
-    object: MemberExpression {
-      object: MemberExpression {
-        object: Name(unit)
-        prop: Name(a)
-      }
-    },
-    prop: Name(b)
+export class AssignmentExpression implements Expression {
+  readonly kind = ExpressionKind.Assignment;
+  constructor(
+    public left: Expression,
+    public right: Expression,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is AssignmentExpression {
+    return expr.kind === ExpressionKind.Assignment;
   }
- */
-export interface MemberExpression extends BaseExpression {
-  kind: ExpressionKind.MemberExpression;
-  object: Expression;
-  prop: Name;
 }
 
-/* 
-  1..9
-  RangeExpression {
-    start: 1, 
-    end: 8
+export class CallExpression implements Expression {
+  readonly kind = ExpressionKind.Call;
+  constructor(
+    public callee: Expression,
+    public args: Expression[],
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is CallExpression {
+    return expr.kind === ExpressionKind.Call;
   }
+}
 
-  1.=9
-  RangeExpression { 
-    start: 1
-    end: 9
+export class MemberExpression implements Expression {
+  readonly kind = ExpressionKind.MemberExpression;
+  constructor(
+    public object: Expression,
+    public prop: Name,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is MemberExpression {
+    return expr.kind === ExpressionKind.MemberExpression;
   }
-*/
-export interface RangeExpression extends BaseExpression {
-  // todo change this to the thing in your mind
-  kind: ExpressionKind.Range;
-  start: number;
-  end: number;
 }
 
-export interface ArrayExpression extends BaseExpression {
-  type: ExpressionKind.Array;
-  elements: Expression[];
-}
+export class RangeExpression implements Expression {
+  readonly kind = ExpressionKind.Range;
+  constructor(
+    public start: number,
+    public end: number,
+    public span: SrcSpan
+  ) {}
 
-export interface Property extends BaseExpression {
-  type: ExpressionKind.Property;
-  key: Expression;
-  value: Expression;
-  shorthand: boolean;
-}
-
-/*  
-{
-  name: "Blocksuite", 
-  age, 
-}
-  ObjectExpression {
-    props: [
-      { key: Name(name), value: Lit("Blocksuite"), shorthand: false}
-      { key: Name(age), value: Name(age), shorthand: true} where &key !== &value
-    ]
+  static is(expr: Expression): expr is RangeExpression {
+    return expr.kind === ExpressionKind.Range;
   }
-*/
-export interface ObjectExpression extends BaseExpression {
-  type: ExpressionKind.Object;
-  props: Property[];
 }
 
-export type Expression =
-  | Literal
-  | Name
-  | TemplateLiteral
-  | UnaryExpression
-  | BinaryExpression
-  | ConditionalExpression
-  | AssignmentExpression
-  | CallExpression
-  | MemberExpression
-  | RangeExpression;
+export class ArrayExpression implements Expression {
+  readonly kind = ExpressionKind.Array;
+  constructor(
+    public elements: Expression[],
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is ArrayExpression {
+    return expr.kind === ExpressionKind.Array;
+  }
+}
+
+export class Property implements Expression {
+  readonly kind = ExpressionKind.Property;
+  constructor(
+    public key: Expression,
+    public value: Expression,
+    public shorthand: boolean,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is Property {
+    return expr.kind === ExpressionKind.Property;
+  }
+}
+
+export class ObjectExpression implements Expression {
+  readonly kind = ExpressionKind.Object;
+  constructor(
+    public props: Property[],
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expression): expr is ObjectExpression {
+    return expr.kind === ExpressionKind.Object;
+  }
+}

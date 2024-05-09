@@ -4,7 +4,7 @@ import type { Expression, Name } from './expr.js';
 export enum StatementKind {
   If,
   Fn,
-  Lambda,
+  ArrowFn,
   Block,
   While,
   For,
@@ -12,49 +12,96 @@ export enum StatementKind {
   NameDeclarator,
 }
 
-interface BaseStatement {
-  kind: StatementKind;
+export interface Statement {
+  readonly kind: StatementKind;
   span: SrcSpan;
 }
 
-export interface BlockStatement extends BaseStatement {
-  kind: StatementKind.Block;
-  statements: Statement[];
+export class BlockStatement implements Statement {
+  readonly kind = StatementKind.Block;
+
+  constructor(
+    public statements: Statement[],
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is BlockStatement {
+    return stmt.kind === StatementKind.Block;
+  }
 }
 
-export interface NamedFunctionStatement extends BaseStatement {
-  kind: StatementKind.Fn;
-  name: Name;
-  params: Expression[];
-  body: BlockStatement;
+export class NamedFunctionStatement implements Statement {
+  readonly kind = StatementKind.Fn;
+
+  constructor(
+    public name: Name,
+    public params: Expression[],
+    public body: BlockStatement,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is NamedFunctionStatement {
+    return stmt.kind === StatementKind.Fn;
+  }
 }
 
-// () => { } or () => 123
-export interface LambdaStatement extends BaseStatement {
-  kind: StatementKind.Lambda;
-  params: Expression[];
-  expression: boolean; // () => 112
-  body: Expression | BlockStatement;
+export class ArrowFunctionStatement implements Statement {
+  readonly kind = StatementKind.ArrowFn;
+
+  constructor(
+    public params: Expression[],
+    public expression: boolean,
+    public body: Expression | BlockStatement,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is ArrowFunctionStatement {
+    return stmt.kind === StatementKind.ArrowFn;
+  }
 }
 
-export interface IfStatement extends BaseStatement {
-  kind: StatementKind.If;
-  test: Expression;
-  consequent: Expression | BlockStatement;
-  alternate: Expression | BlockStatement | null;
+export class IfStatement implements Statement {
+  readonly kind = StatementKind.If;
+
+  constructor(
+    public test: Expression,
+    public consequent: Expression | BlockStatement,
+    public alternate: Expression | BlockStatement | null,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is IfStatement {
+    return stmt.kind === StatementKind.If;
+  }
 }
 
-export interface WhileStatement extends BaseStatement {
-  kind: StatementKind.While;
-  test: Expression;
-  body: Expression | BlockStatement;
+export class WhileStatement implements Statement {
+  readonly kind = StatementKind.While;
+
+  constructor(
+    public test: Expression,
+    public body: Expression | BlockStatement,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is WhileStatement {
+    return stmt.kind === StatementKind.While;
+  }
 }
 
-export interface ForStatement extends BaseStatement {
-  kind: StatementKind.For;
-  each: Expression;
-  range: Expression; // can be a range expr of something that evaluates to a iterator
-  body: Expression | BlockStatement;
+export class ForStatement implements Statement {
+  readonly kind = StatementKind.For;
+
+  constructor(
+    public each: Expression,
+    public range: Expression,
+    public body: Expression | BlockStatement,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is ForStatement {
+    return stmt.kind === StatementKind.For;
+  }
 }
 
 export enum NameDeclarationType {
@@ -62,26 +109,30 @@ export enum NameDeclarationType {
   Const = 'const',
 }
 
-// let a = 10, b = 10
-//     ^^^^^^  ^^^^^^ -> NameDeclarator[]
-// ^^^^^^^^^^^^^^^^^^ -> NameDeclaration (STMT)
-export interface NameDeclarator extends BaseStatement {
-  kind: StatementKind.NameDeclarator;
-  name: Name;
-  init: Expression | null;
-}
-export interface NameDeclaration extends BaseStatement {
-  kind: StatementKind.NameDeclaration;
-  declarations: NameDeclarator[];
-  type: NameDeclarationType;
+export class NameDeclarator implements Statement {
+  readonly kind = StatementKind.NameDeclarator;
+
+  constructor(
+    public name: Name,
+    public init: Expression | null,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is NameDeclarator {
+    return stmt.kind === StatementKind.NameDeclarator;
+  }
 }
 
-export type Statement =
-  | NamedFunctionStatement
-  | LambdaStatement
-  | NameDeclaration
-  | NameDeclarator
-  | WhileStatement
-  | ForStatement
-  | IfStatement
-  | BlockStatement;
+export class NameDeclaration implements Statement {
+  readonly kind = StatementKind.NameDeclaration;
+
+  constructor(
+    public declarations: NameDeclarator[],
+    public type: NameDeclarationType,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: Statement): stmt is NameDeclaration {
+    return stmt.kind === StatementKind.NameDeclaration;
+  }
+}

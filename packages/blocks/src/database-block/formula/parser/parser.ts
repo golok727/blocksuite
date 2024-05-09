@@ -1,5 +1,4 @@
 import type * as Ast from '../ast/index.js';
-import type { SrcSpan } from '../span.js';
 import type { Token } from '../token.js';
 import { TokenKind } from '../token.js';
 import type { Lexer } from './lexer.js';
@@ -57,27 +56,6 @@ export class Parser {
     this.tok1 = this.lex.advance();
     this.tok0 = tok;
     return tok;
-  }
-
-  /// PArser
-  private parseStatements: SeriesParseFn<Ast.Statement> = () => {
-    throw new Error('Bad');
-  };
-
-  private parseNameDeclaration(): Ast.NameDeclaration {
-    throw new Error('');
-  }
-
-  private parseDeclarations(): [Ast.NameDeclarator[], span: SrcSpan] {
-    throw new Error('not implemented');
-  }
-
-  private parseDeclarator: SeriesParseFn<Ast.NameDeclarator> = () => {
-    throw new Error('not implemented');
-  };
-
-  private parseExpression() {
-    throw new Error('noop');
   }
 
   // PArsing
