@@ -1,8 +1,7 @@
 import type { SrcSpan } from '../span.js';
-import type { Item } from './item.js';
+import type { Item } from './ast.js';
 
-export * from './expr.js';
-export * from './item.js';
+export * from './ast.js';
 
 export interface Formula {
   type: 'formula' | 'script'; // Should we do it ?

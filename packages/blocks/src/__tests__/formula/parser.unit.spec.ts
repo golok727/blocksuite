@@ -2,34 +2,32 @@ import { describe, expect, test } from 'vitest';
 
 import {
   Ident,
-  NameDeclaration,
+  ItemNameDeclaration,
+  ItemNameDeclarator,
   NameDeclarationType,
-  NameDeclarator,
 } from '../../database-block/formula/ast/index.js';
 import { Lexer } from '../../database-block/formula/parser/lexer.js';
 import { Parser } from '../../database-block/formula/parser/parser.js';
 import { SrcSpan } from '../../database-block/formula/span.js';
 
 describe('Parser', () => {
-  test('Name declaration', () => {
+  test('Basic', () => {
     const src = `const radha = "krsna", krsna = "radha"
-    let hello = "world", thing
-    `;
-    console.log(src.slice(0, 38));
-    console.log(src.slice(0, 39));
+    let hello = "world", thing`;
+
     const lex = new Lexer(src);
     const parser = new Parser(lex);
     const parsed = parser.parse();
     const body = [
-      new NameDeclaration(
+      new ItemNameDeclaration(
         [
-          new NameDeclarator(
+          new ItemNameDeclarator(
             new Ident('radha', new SrcSpan(6, 11)),
             null,
             new SrcSpan(6, 21)
           ),
 
-          new NameDeclarator(
+          new ItemNameDeclarator(
             new Ident('krsna', new SrcSpan(23, 28)),
             null,
             new SrcSpan(23, 38)
@@ -39,15 +37,15 @@ describe('Parser', () => {
         new SrcSpan(0, 38)
       ),
 
-      new NameDeclaration(
+      new ItemNameDeclaration(
         [
-          new NameDeclarator(
+          new ItemNameDeclarator(
             new Ident('hello', new SrcSpan(47, 52)),
             null,
             new SrcSpan(47, 62)
           ),
 
-          new NameDeclarator(
+          new ItemNameDeclarator(
             new Ident('thing', new SrcSpan(64, 69)),
             null,
             new SrcSpan(64, 69)
@@ -62,9 +60,8 @@ describe('Parser', () => {
       formula: {
         type: 'formula',
         body,
-        span: new SrcSpan(0, 70),
+        span: new SrcSpan(0, src.length),
       },
-      span: new SrcSpan(0, src.length),
     };
 
     expect(parsed).toEqual(expected);

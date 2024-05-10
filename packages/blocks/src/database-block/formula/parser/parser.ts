@@ -1,5 +1,6 @@
 import * as Ast from '../ast/index.js';
-import { SrcSpan } from '../span.js';
+import type { SrcSpan } from '../span.js';
+import { type Spannable } from '../span.js';
 import type { LiteralToken } from '../token.js';
 import type { Token } from '../token.js';
 import { TokenKind } from '../token.js';
@@ -10,12 +11,11 @@ type SkipToken = typeof Skip;
 
 export interface Parsed {
   formula: Ast.Formula;
-  span: SrcSpan;
 }
 
 export class Parser {
-  private tok0: Token;
-  private tok1: Token;
+  private tokCur: Token;
+  private tokNxt: Token;
 
   private line: number = 0;
 
@@ -23,35 +23,34 @@ export class Parser {
     /*   
     my be in future we can have different modes like formula or script
    */
-    this.tok0 = this.lex.advance();
-    this.tok1 = this.lex.advance();
+    this.tokCur = this.lex.advance();
+    this.tokNxt = this.lex.advance();
   }
 
   isEof() {
-    return this.tok0.kind === TokenKind.Eof;
+    return this.tokCur.kind === TokenKind.Eof;
   }
 
   parse(): Parsed {
     return {
       formula: this.parseFormula(),
-      span: new SrcSpan(0, this.lex.source.length),
     };
   }
 
   private parseFormula(): Ast.Formula {
     const [body, span] = this.series<Ast.Item>(this.parseStatements);
-
+    console.log(span, this.lex.source.length);
     const formula: Ast.Formula = {
       type: 'formula',
       body: body,
-      span, // span of the body excluding white spaces
+      span,
     };
 
     return formula;
   }
 
   private parseStatements: SeriesParseFn<Ast.Item> = () => {
-    switch (this.tok0.kind) {
+    switch (this.tokCur.kind) {
       case TokenKind.Eof:
         return null;
 
@@ -60,7 +59,6 @@ export class Parser {
         return this.parseNameDeclaration();
 
       default:
-        this.nextToken();
         return Skip;
     }
   };
@@ -80,13 +78,14 @@ export class Parser {
 
     const declarationsSpan = letOrConst.span.clone();
 
-    for (const decl of declarations) declarationsSpan.mergeMut(decl.span);
-    console.log(declarationsSpan, span.merge(letOrConst.span));
-
-    return new Ast.NameDeclaration(declarations, type, declarationsSpan);
+    return new Ast.ItemNameDeclaration(
+      declarations,
+      type,
+      declarationsSpan.mergeMut(span)
+    );
   }
 
-  private parseDeclarator: SeriesParseFn<Ast.NameDeclarator> = () => {
+  private parseDeclarator: SeriesParseFn<Ast.ItemNameDeclarator> = () => {
     // this will be terminated when the commas are over
     // make sure to stop the tok0 at a comma to parse the rest before returning
     const nameTok = this.nextToken() as LiteralToken<string>;
@@ -98,33 +97,33 @@ export class Parser {
     const declaratorSpan = name.span.clone();
 
     if (this.eatOneIf(TokenKind.Eq)) {
-      declaratorSpan.merge(this.tok0.span);
+      declaratorSpan.merge(this.tokCur.span);
 
-      // we will change this with a expression parser
+      // todo we will change this with a expression parser
       while (
         !this.isEof() &&
-        this.tok0.kind !== TokenKind.Comma &&
-        this.tok0.kind !== TokenKind.NewLine &&
-        this.tok0.kind !== TokenKind.Semi
+        this.tokCur.kind !== TokenKind.Comma &&
+        this.tokCur.kind !== TokenKind.NewLine &&
+        this.tokCur.kind !== TokenKind.Semi
       ) {
         declaratorSpan.mergeMut(this.nextToken().span);
       }
 
-      return new Ast.NameDeclarator(name, null, declaratorSpan); // todo parse
+      return new Ast.ItemNameDeclarator(name, null, declaratorSpan); // todo parse
     } else {
       // trailing comma
       if (
-        this.tok0.kind === TokenKind.Comma &&
-        this.tok1.kind !== TokenKind.Name
+        this.tokCur.kind === TokenKind.Comma &&
+        this.tokNxt.kind !== TokenKind.Name
       )
         throw new Error('Trailing commas are not allowed');
 
-      return new Ast.NameDeclarator(name, null, declaratorSpan); // uninitialized var
+      return new Ast.ItemNameDeclarator(name, null, declaratorSpan); // uninitialized var
     }
   };
 
   private nextToken() {
-    const tok = this.tok0;
+    const tok = this.tokCur;
 
     let nxt: Token = this.lex.advance();
 
@@ -142,13 +141,13 @@ export class Parser {
       nxt = this.lex.advance();
     }
 
-    this.tok0 = this.tok1;
-    this.tok1 = nxt;
+    this.tokCur = this.tokNxt;
+    this.tokNxt = nxt;
     return tok;
   }
 
   private eatOneIf(kind: TokenKind) {
-    const tok = this.tok0;
+    const tok = this.tokCur;
     if (tok.kind === kind) {
       return this.nextToken();
     }
@@ -156,20 +155,27 @@ export class Parser {
     return null;
   }
 
-  private series<R>(
+  private series<R extends Spannable>(
     parse: SeriesParseFn<R>,
     delim?: TokenKind
   ): [result: R[], span: SrcSpan] {
     const series: R[] = [];
-    const start = this.tok0.span;
-    let end = this.tok0.span;
+    const start = this.tokCur.span;
+    let end = this.tokCur.span;
     for (;;) {
       const parsed = parse();
-      if (parsed === Skip) continue;
-      if (parsed === null) break;
+      if (parsed === Skip) {
+        this.nextToken();
+        continue;
+      }
+
+      if (parsed === null) {
+        end = this.tokCur.span;
+        break;
+      }
 
       series.push(parsed);
-      end = this.tok0.span;
+      end = parsed.span;
 
       if (delim !== undefined) {
         if (!this.eatOneIf(delim)) break;
@@ -182,4 +188,4 @@ export class Parser {
   }
 }
 
-type SeriesParseFn<R> = () => R | null | SkipToken;
+type SeriesParseFn<R extends Spannable> = () => R | null | SkipToken;

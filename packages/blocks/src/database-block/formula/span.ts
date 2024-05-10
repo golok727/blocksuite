@@ -29,6 +29,7 @@ export class SrcSpan {
     if (other.end > this.end) {
       this.end = other.end;
     }
+    return this;
   }
 
   clone() {
@@ -46,4 +47,8 @@ export class SrcSpan {
   toString() {
     return `[[ Start: ${this.start} , End: ${this.end} ]]`;
   }
+}
+
+export interface Spannable {
+  span: SrcSpan;
 }
