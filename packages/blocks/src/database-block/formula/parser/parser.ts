@@ -38,8 +38,7 @@ export class Parser {
   }
 
   private parseFormula(): Ast.Formula {
-    const [body, span] = this.series<Ast.Item>(this.parseStatements);
-    console.log(span, this.lex.source.length);
+    const [body, span] = this.series<Ast.Stmt>(this.parseStatements);
     const formula: Ast.Formula = {
       type: 'formula',
       body: body,
@@ -49,55 +48,49 @@ export class Parser {
     return formula;
   }
 
-  private parseStatements: SeriesParseFn<Ast.Item> = () => {
+  // -- PARSER
+  private parseStatements: SeriesParseFn<Ast.Stmt> = () => {
     switch (this.tokCur.kind) {
       case TokenKind.Eof:
         return null;
 
       case TokenKind.Let:
       case TokenKind.Const:
-        return this.parseNameDeclaration();
+        return this.parseLocal();
 
       default:
         return Skip;
     }
   };
 
-  private parseNameDeclaration() {
+  private parseLocal() {
     const letOrConst = this.nextToken(); // eat let or const
 
     const type =
       letOrConst.kind === TokenKind.Let
-        ? Ast.NameDeclarationType.Let
-        : Ast.NameDeclarationType.Const;
+        ? Ast.LocalType.Let
+        : Ast.LocalType.Const;
 
-    const [declarations, span] = this.series(
-      this.parseDeclarator,
-      TokenKind.Comma
-    );
+    const [bindings, span] = this.series(this.parseExprAssign, TokenKind.Comma);
 
-    const declarationsSpan = letOrConst.span.clone();
+    const bindingsSpan = letOrConst.span.merge(span);
 
-    return new Ast.ItemNameDeclaration(
-      declarations,
-      type,
-      declarationsSpan.mergeMut(span)
-    );
+    return new Ast.StmtLocal(bindings, type, bindingsSpan);
   }
 
-  private parseDeclarator: SeriesParseFn<Ast.ItemNameDeclarator> = () => {
+  private parseExprAssign: SeriesParseFn<Ast.ExprLocalAssign> = () => {
     // this will be terminated when the commas are over
     // make sure to stop the tok0 at a comma to parse the rest before returning
     const nameTok = this.nextToken() as LiteralToken<string>;
 
     if (nameTok.kind !== TokenKind.Name) throw new Error('Expected a name');
 
-    const name = new Ast.Ident(nameTok.data, nameTok.span);
+    const ident = new Ast.Ident(nameTok.data, nameTok.span);
 
-    const declaratorSpan = name.span.clone();
+    const bindingSpan = ident.span.clone();
 
     if (this.eatOneIf(TokenKind.Eq)) {
-      declaratorSpan.merge(this.tokCur.span);
+      bindingSpan.merge(this.tokCur.span);
 
       // todo we will change this with a expression parser
       while (
@@ -106,10 +99,10 @@ export class Parser {
         this.tokCur.kind !== TokenKind.NewLine &&
         this.tokCur.kind !== TokenKind.Semi
       ) {
-        declaratorSpan.mergeMut(this.nextToken().span);
+        bindingSpan.mergeMut(this.nextToken().span);
       }
 
-      return new Ast.ItemNameDeclarator(name, null, declaratorSpan); // todo parse
+      return new Ast.ExprLocalAssign(ident, null, bindingSpan); // todo parse
     } else {
       // trailing comma
       if (
@@ -118,9 +111,11 @@ export class Parser {
       )
         throw new Error('Trailing commas are not allowed');
 
-      return new Ast.ItemNameDeclarator(name, null, declaratorSpan); // uninitialized var
+      return new Ast.ExprLocalAssign(ident, null, bindingSpan); // uninitialized var
     }
   };
+
+  // -- PARSER
 
   private nextToken() {
     const tok = this.tokCur;
@@ -155,6 +150,9 @@ export class Parser {
     return null;
   }
 
+  /**
+   * Use to parse a series
+   */
   private series<R extends Spannable>(
     parse: SeriesParseFn<R>,
     delim?: TokenKind

@@ -9,6 +9,7 @@ export class SrcSpan {
   }
 
   // we will be merging quite a lot so don't use math.min and math.max
+  /** @must   */
   merge(other: SrcSpan) {
     let start = this.start;
     let end = this.end;

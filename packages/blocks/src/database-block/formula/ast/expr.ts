@@ -1,15 +1,7 @@
-import type { Spannable, SrcSpan } from '../span.js';
+import type { Block } from '@blocksuite/store';
 
-export enum ItemKind {
-  If,
-  Fn,
-  ArrowFn,
-  Block,
-  While,
-  For,
-  NameDeclaration,
-  NameDeclarator,
-}
+import type { SrcSpan } from '../span.js';
+import { type Spannable } from '../span.js';
 
 export enum ExprKind {
   Literal,
@@ -21,138 +13,21 @@ export enum ExprKind {
   Unary,
   Binary,
   Condition,
-  Assignment,
+  Assign,
+  LocalAssign,
   Call,
   MemberExpression,
   Range,
-}
-
-export interface Item extends Spannable {
-  readonly kind: ItemKind;
+  ArrowFn,
+  If,
+  While,
+  ForLoop,
+  Binding,
+  Empty,
 }
 
 export interface Expr extends Spannable {
   kind: ExprKind;
-}
-
-export class Block implements Item {
-  readonly kind = ItemKind.Block;
-
-  constructor(
-    public statements: Item[],
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is Block {
-    return stmt.kind === ItemKind.Block;
-  }
-}
-
-export class ItemFn implements Item {
-  readonly kind = ItemKind.Fn;
-
-  constructor(
-    public name: Ident,
-    public params: Expr[],
-    public body: Block,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemFn {
-    return stmt.kind === ItemKind.Fn;
-  }
-}
-
-export class ItemArrowFn implements Item {
-  readonly kind = ItemKind.ArrowFn;
-
-  constructor(
-    public params: Expr[],
-    public expression: boolean,
-    public body: Expr | Block,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemArrowFn {
-    return stmt.kind === ItemKind.ArrowFn;
-  }
-}
-
-export class ItemIF implements Item {
-  readonly kind = ItemKind.If;
-
-  constructor(
-    public test: Expr,
-    public consequent: Expr | Block,
-    public alternate: Expr | Block | null,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemIF {
-    return stmt.kind === ItemKind.If;
-  }
-}
-
-export class ItemWhile implements Item {
-  readonly kind = ItemKind.While;
-
-  constructor(
-    public test: Expr,
-    public body: Expr | Block,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemWhile {
-    return stmt.kind === ItemKind.While;
-  }
-}
-
-export class ItemFor implements Item {
-  readonly kind = ItemKind.For;
-
-  constructor(
-    public each: Expr,
-    public range: Expr,
-    public body: Expr | Block,
-    public span: SrcSpan
-  ) {}
-
-  static is(item: Item): item is ItemFor {
-    return item.kind === ItemKind.For;
-  }
-}
-
-export enum NameDeclarationType {
-  Let = 'let',
-  Const = 'const',
-}
-
-export class ItemNameDeclarator implements Item {
-  readonly kind = ItemKind.NameDeclarator;
-
-  constructor(
-    public name: Ident,
-    public init: Expr | null,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemNameDeclarator {
-    return stmt.kind === ItemKind.NameDeclarator;
-  }
-}
-
-export class ItemNameDeclaration implements Item {
-  readonly kind = ItemKind.NameDeclaration;
-
-  constructor(
-    public declarations: ItemNameDeclarator[],
-    public type: NameDeclarationType,
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Item): stmt is ItemNameDeclaration {
-    return stmt.kind === ItemKind.NameDeclaration;
-  }
 }
 
 export class ExprLit implements Expr {
@@ -257,7 +132,7 @@ export class ExprCondition implements Expr {
 }
 
 export class ExprAssign implements Expr {
-  readonly kind = ExprKind.Assignment;
+  readonly kind = ExprKind.Assign;
   constructor(
     public left: Expr,
     public right: Expr,
@@ -265,7 +140,20 @@ export class ExprAssign implements Expr {
   ) {}
 
   static is(expr: Expr): expr is ExprAssign {
-    return expr.kind === ExprKind.Assignment;
+    return expr.kind === ExprKind.Assign;
+  }
+}
+
+export class ExprLocalAssign implements Expr {
+  readonly kind = ExprKind.LocalAssign;
+  constructor(
+    public name: Ident,
+    public init: Expr | null,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprLocalAssign {
+    return expr.kind === ExprKind.LocalAssign;
   }
 }
 
@@ -343,5 +231,64 @@ export class ExprObject implements Expr {
 
   static is(expr: Expr): expr is ExprObject {
     return expr.kind === ExprKind.Object;
+  }
+}
+
+export class ExprArrowFn implements Expr {
+  readonly kind = ExprKind.ArrowFn;
+
+  constructor(
+    public params: Expr[],
+    public expression: boolean,
+    public body: Expr | Block,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprArrowFn {
+    return expr.kind === ExprKind.ArrowFn;
+  }
+}
+
+export class ExprIf implements Expr {
+  readonly kind = ExprKind.If;
+
+  constructor(
+    public test: Expr,
+    public consequent: Expr | Block,
+    public alternate: Expr | Block | null,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprIf {
+    return expr.kind === ExprKind.If;
+  }
+}
+
+export class ExprWhile implements Expr {
+  readonly kind = ExprKind.While;
+
+  constructor(
+    public test: Expr,
+    public body: Expr | Block,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprWhile {
+    return expr.kind === ExprKind.While;
+  }
+}
+
+export class ExprForLoop implements Expr {
+  readonly kind = ExprKind.ForLoop;
+
+  constructor(
+    public each: Expr,
+    public range: Expr,
+    public body: Expr | Block,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprForLoop {
+    return expr.kind === ExprKind.ForLoop;
   }
 }

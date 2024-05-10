@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  ExprLocalAssign,
   Ident,
-  ItemNameDeclaration,
-  ItemNameDeclarator,
-  NameDeclarationType,
+  LocalType,
+  StmtLocal,
 } from '../../database-block/formula/ast/index.js';
 import { Lexer } from '../../database-block/formula/parser/lexer.js';
 import { Parser } from '../../database-block/formula/parser/parser.js';
@@ -19,39 +19,39 @@ describe('Parser', () => {
     const parser = new Parser(lex);
     const parsed = parser.parse();
     const body = [
-      new ItemNameDeclaration(
+      new StmtLocal(
         [
-          new ItemNameDeclarator(
+          new ExprLocalAssign(
             new Ident('radha', new SrcSpan(6, 11)),
             null,
             new SrcSpan(6, 21)
           ),
 
-          new ItemNameDeclarator(
+          new ExprLocalAssign(
             new Ident('krsna', new SrcSpan(23, 28)),
             null,
             new SrcSpan(23, 38)
           ),
         ],
-        NameDeclarationType.Const,
+        LocalType.Const,
         new SrcSpan(0, 38)
       ),
 
-      new ItemNameDeclaration(
+      new StmtLocal(
         [
-          new ItemNameDeclarator(
+          new ExprLocalAssign(
             new Ident('hello', new SrcSpan(47, 52)),
             null,
             new SrcSpan(47, 62)
           ),
 
-          new ItemNameDeclarator(
+          new ExprLocalAssign(
             new Ident('thing', new SrcSpan(64, 69)),
             null,
             new SrcSpan(64, 69)
           ),
         ],
-        NameDeclarationType.Let,
+        LocalType.Let,
         new SrcSpan(43, 69)
       ),
     ];
