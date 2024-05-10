@@ -6,19 +6,23 @@ import { type Spannable } from '../span.js';
 export enum ExprKind {
   Literal,
   TemplateLiteral,
+
   Ident,
+
   Array,
   Object,
   Property,
+
   Unary,
   Binary,
-  Condition,
+
   Assign,
   LocalAssign,
   Call,
   MemberExpression,
   Range,
   ArrowFn,
+
   If,
   While,
   ForLoop,
@@ -113,21 +117,6 @@ export class ExprBin implements Expr {
 
   static is(expr: Expr): expr is ExprBin {
     return expr.kind === ExprKind.Binary;
-  }
-}
-
-// a > b ? "big" : "small"
-export class ExprCondition implements Expr {
-  readonly kind = ExprKind.Condition;
-  constructor(
-    public test: Expr,
-    public consequent: Expr,
-    public alternate: Expr,
-    public span: SrcSpan
-  ) {}
-
-  static is(expr: Expr): expr is ExprCondition {
-    return expr.kind === ExprKind.Condition;
   }
 }
 
