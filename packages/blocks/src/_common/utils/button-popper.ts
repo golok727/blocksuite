@@ -28,6 +28,8 @@ export function listenClickAway(
   };
 }
 
+type Display = 'show' | 'hidden';
+
 const ATTR_SHOW = 'data-show';
 /**
  * Using attribute 'data-show' to control popper visibility.
@@ -44,14 +46,14 @@ const ATTR_SHOW = 'data-show';
 export function createButtonPopper(
   reference: HTMLElement,
   popperElement: HTMLElement,
-  stateUpdated: (state: { display: 'show' | 'hidden' }) => void = () => {
+  stateUpdated: (state: { display: Display }) => void = () => {
     /** DEFAULT EMPTY FUNCTION */
   },
   mainAxis?: number,
   crossAxis?: number,
   rootBoundary?: Rect | (() => Rect | undefined)
 ) {
-  let state = 'hidden';
+  let display: Display = 'hidden';
 
   const originMaxHeight = popperElement
     .computedStyleMap()
@@ -59,8 +61,7 @@ export function createButtonPopper(
     ?.toString();
 
   function compute() {
-    const overflowOption = {
-      padding: 10,
+    const overflowOptions = {
       rootBoundary:
         typeof rootBoundary === 'function' ? rootBoundary() : rootBoundary,
     };
@@ -73,11 +74,11 @@ export function createButtonPopper(
         }),
         autoPlacement({
           allowedPlacements: ['top', 'bottom'],
-          ...overflowOption,
+          ...overflowOptions,
         }),
-        shift(overflowOption),
+        shift(overflowOptions),
         size({
-          ...overflowOption,
+          ...overflowOptions,
           apply({ availableHeight }) {
             popperElement.style.maxHeight = originMaxHeight
               ? `min(${originMaxHeight}, ${availableHeight}px)`
@@ -99,18 +100,16 @@ export function createButtonPopper(
 
   const show = () => {
     popperElement.setAttribute(ATTR_SHOW, '');
+    display = 'show';
+    stateUpdated({ display });
     compute();
-    state = 'show';
-    stateUpdated({ display: 'show' });
   };
 
   const hide = () => {
-    if (!popperElement) return;
     popperElement.removeAttribute(ATTR_SHOW);
-
+    display = 'hidden';
+    stateUpdated({ display });
     compute();
-    state = 'hidden';
-    stateUpdated({ display: 'hidden' });
   };
 
   const toggle = () => {
@@ -125,7 +124,7 @@ export function createButtonPopper(
 
   return {
     get state() {
-      return state;
+      return display;
     },
     show,
     hide,
