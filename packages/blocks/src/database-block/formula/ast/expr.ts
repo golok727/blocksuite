@@ -30,6 +30,26 @@ export enum ExprKind {
   Empty,
 }
 
+export enum OpBin {
+  Add,
+  Mul,
+  IntDiv,
+  Div,
+  Sub,
+  Exp,
+  Eq,
+  NotEq,
+  GtEq,
+  LtEq,
+  Gt,
+  Lt,
+}
+
+export enum OpUnary {
+  Not,
+  Negate,
+}
+
 export interface Expr extends Spannable {
   kind: ExprKind;
 }
@@ -71,26 +91,6 @@ export class Ident implements Expr {
   static is(expr: Expr): expr is Ident {
     return expr.kind === ExprKind.Ident;
   }
-}
-
-export enum OpBin {
-  Add,
-  Mul,
-  IntDiv,
-  Div,
-  Sub,
-  Exp,
-  Eq,
-  NotEq,
-  GtEq,
-  LtEq,
-  Gt,
-  Lt,
-}
-
-export enum OpUnary {
-  Not,
-  Negate,
 }
 
 export class ExprUnary implements Expr {

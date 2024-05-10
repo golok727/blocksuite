@@ -57,12 +57,14 @@ export class Parser {
       case TokenKind.Let:
       case TokenKind.Const:
         return this.parseLocal();
-
-      default:
+      case TokenKind.Fn:
         return Skip;
+      default:
+        return Skip; // todo parse expr and map it into a expr
     }
   };
 
+  // without let or const consumed
   private parseLocal() {
     const letOrConst = this.nextToken(); // eat let or const
 
@@ -71,20 +73,24 @@ export class Parser {
         ? Ast.LocalType.Let
         : Ast.LocalType.Const;
 
-    const [bindings, span] = this.series(this.parseExprAssign, TokenKind.Comma);
+    const [assignments, span] = this.series(
+      this.parseAssignments,
+      TokenKind.Comma
+    );
 
     const bindingsSpan = letOrConst.span.merge(span);
 
-    return new Ast.StmtLocal(bindings, type, bindingsSpan);
+    return new Ast.StmtLocal(assignments, type, bindingsSpan);
   }
 
-  private parseExprAssign: SeriesParseFn<Ast.ExprLocalAssign> = () => {
+  private parseAssignments: SeriesParseFn<Ast.ExprLocalAssign> = () => {
     // this will be terminated when the commas are over
     // make sure to stop the tok0 at a comma to parse the rest before returning
     const nameTok = this.nextToken() as LiteralToken<string>;
 
     if (nameTok.kind !== TokenKind.Name) throw new Error('Expected a name');
 
+    // todo pattern ? let [a] = [1, 2] || let {name} = {name: "block"}
     const ident = new Ast.Ident(nameTok.data, nameTok.span);
 
     const bindingSpan = ident.span.clone();

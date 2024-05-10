@@ -56,7 +56,7 @@ export class StmtLocal implements Stmt {
   readonly kind = StmtKind.Local;
 
   constructor(
-    public bindings: ExprLocalAssign[],
+    public assignments: ExprLocalAssign[],
     public type: LocalType,
     public span: SrcSpan
   ) {}
