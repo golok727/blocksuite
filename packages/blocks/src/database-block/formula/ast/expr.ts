@@ -16,8 +16,10 @@ export enum ExprKind {
   Unary,
   Binary,
 
-  Assign,
-  LocalAssign,
+  Assignment,
+
+  LocalAssignment,
+
   Call,
   MemberExpression,
   Range,
@@ -121,7 +123,7 @@ export class ExprBin implements Expr {
 }
 
 export class ExprAssign implements Expr {
-  readonly kind = ExprKind.Assign;
+  readonly kind = ExprKind.Assignment;
   constructor(
     public left: Expr,
     public right: Expr,
@@ -129,12 +131,12 @@ export class ExprAssign implements Expr {
   ) {}
 
   static is(expr: Expr): expr is ExprAssign {
-    return expr.kind === ExprKind.Assign;
+    return expr.kind === ExprKind.Assignment;
   }
 }
 
 export class ExprLocalAssign implements Expr {
-  readonly kind = ExprKind.LocalAssign;
+  readonly kind = ExprKind.LocalAssignment;
   constructor(
     public name: Ident,
     public init: Expr | null,
@@ -142,7 +144,7 @@ export class ExprLocalAssign implements Expr {
   ) {}
 
   static is(expr: Expr): expr is ExprLocalAssign {
-    return expr.kind === ExprKind.LocalAssign;
+    return expr.kind === ExprKind.LocalAssignment;
   }
 }
 

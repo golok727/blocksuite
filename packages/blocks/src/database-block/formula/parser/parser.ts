@@ -38,7 +38,7 @@ export class Parser {
   }
 
   private parseFormula(): Ast.Formula {
-    const [body, span] = this.series<Ast.Stmt>(this.parseStatements);
+    const [body, span] = this.parseStatementSequence();
     const formula: Ast.Formula = {
       type: 'formula',
       body: body,
@@ -48,8 +48,13 @@ export class Parser {
     return formula;
   }
 
-  // -- PARSER
-  private parseStatements: SeriesParseFn<Ast.Stmt> = () => {
+  // -- PARSER BEGIN
+
+  private parseStatementSequence() {
+    return this.series(this.parseStatement);
+  }
+
+  private parseStatement: SeriesParseFn<Ast.Stmt> = () => {
     switch (this.tokCur.kind) {
       case TokenKind.Eof:
         return null;
@@ -57,8 +62,10 @@ export class Parser {
       case TokenKind.Let:
       case TokenKind.Const:
         return this.parseLocal();
+
       case TokenKind.Fn:
         return Skip;
+
       default:
         return Skip; // todo parse expr and map it into a expr
     }
