@@ -1,11 +1,11 @@
 import type { SrcSpan } from '../span.js';
-import type { Statement } from './statement.js';
+import type { Item } from './item.js';
 
 export * from './expr.js';
-export * from './statement.js';
+export * from './item.js';
 
 export interface Formula {
   type: 'formula' | 'script'; // Should we do it ?
-  body: Statement[];
+  body: Item[];
   span: SrcSpan;
 }

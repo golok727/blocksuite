@@ -1,9 +1,9 @@
 import type { SrcSpan } from '../span.js';
 
-export enum ExpressionKind {
+export enum ExprKind {
   Literal,
   TemplateLiteral,
-  Name,
+  Ident,
   Array,
   Object,
   Property,
@@ -16,51 +16,51 @@ export enum ExpressionKind {
   Range,
 }
 
-export interface Expression {
-  kind: ExpressionKind;
+export interface Expr {
+  kind: ExprKind;
   span: SrcSpan;
 }
 
-export class Literal implements Expression {
-  readonly kind = ExpressionKind.Literal;
+export class ExprLit implements Expr {
+  readonly kind = ExprKind.Literal;
 
   constructor(
     public value: number | string | boolean,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is Literal {
-    return expr.kind === ExpressionKind.Literal;
+  static is(expr: Expr): expr is ExprLit {
+    return expr.kind === ExprKind.Literal;
   }
 }
 
-export class TemplateLiteral implements Expression {
-  readonly kind = ExpressionKind.TemplateLiteral;
+export class ExprTemplateLit implements Expr {
+  readonly kind = ExprKind.TemplateLiteral;
 
   constructor(
     public value: string,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is TemplateLiteral {
-    return expr.kind === ExpressionKind.TemplateLiteral;
+  static is(expr: Expr): expr is ExprTemplateLit {
+    return expr.kind === ExprKind.TemplateLiteral;
   }
 }
 
-export class Name implements Expression {
-  readonly kind = ExpressionKind.Name;
+export class Ident implements Expr {
+  readonly kind = ExprKind.Ident;
 
   constructor(
     public name: string,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is Name {
-    return expr.kind === ExpressionKind.Name;
+  static is(expr: Expr): expr is Ident {
+    return expr.kind === ExprKind.Ident;
   }
 }
 
-export enum BinaryOp {
+export enum OpBin {
   Add,
   Mul,
   IntDiv,
@@ -75,138 +75,139 @@ export enum BinaryOp {
   Lt,
 }
 
-export enum UnaryOp {
+export enum OpUnary {
   Not,
   Negate,
 }
 
-export class UnaryExpression implements Expression {
-  readonly kind = ExpressionKind.Unary;
+export class ExprUnary implements Expr {
+  readonly kind = ExprKind.Unary;
   constructor(
-    public op: UnaryOp,
-    public arg: Expression,
+    public op: OpUnary,
+    public arg: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is UnaryExpression {
-    return expr.kind === ExpressionKind.Unary;
+  static is(expr: Expr): expr is ExprUnary {
+    return expr.kind === ExprKind.Unary;
   }
 }
 
-export class BinaryExpression implements Expression {
-  readonly kind = ExpressionKind.Binary;
+export class ExprBin implements Expr {
+  readonly kind = ExprKind.Binary;
   constructor(
-    public left: Expression,
-    public op: UnaryOp,
-    public right: Expression,
+    public left: Expr,
+    public op: OpUnary,
+    public right: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is BinaryExpression {
-    return expr.kind === ExpressionKind.Binary;
+  static is(expr: Expr): expr is ExprBin {
+    return expr.kind === ExprKind.Binary;
   }
 }
 
-export class ConditionalExpression implements Expression {
-  readonly kind = ExpressionKind.Condition;
+// a > b ? "big" : "small"
+export class ExprCondition implements Expr {
+  readonly kind = ExprKind.Condition;
   constructor(
-    public test: Expression,
-    public consequent: Expression,
-    public alternate: Expression,
+    public test: Expr,
+    public consequent: Expr,
+    public alternate: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is ConditionalExpression {
-    return expr.kind === ExpressionKind.Condition;
+  static is(expr: Expr): expr is ExprCondition {
+    return expr.kind === ExprKind.Condition;
   }
 }
 
-export class AssignmentExpression implements Expression {
-  readonly kind = ExpressionKind.Assignment;
+export class ExprAssign implements Expr {
+  readonly kind = ExprKind.Assignment;
   constructor(
-    public left: Expression,
-    public right: Expression,
+    public left: Expr,
+    public right: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is AssignmentExpression {
-    return expr.kind === ExpressionKind.Assignment;
+  static is(expr: Expr): expr is ExprAssign {
+    return expr.kind === ExprKind.Assignment;
   }
 }
 
-export class CallExpression implements Expression {
-  readonly kind = ExpressionKind.Call;
+export class ExprCall implements Expr {
+  readonly kind = ExprKind.Call;
   constructor(
-    public callee: Expression,
-    public args: Expression[],
+    public callee: Expr,
+    public args: Expr[],
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is CallExpression {
-    return expr.kind === ExpressionKind.Call;
+  static is(expr: Expr): expr is ExprCall {
+    return expr.kind === ExprKind.Call;
   }
 }
 
-export class MemberExpression implements Expression {
-  readonly kind = ExpressionKind.MemberExpression;
+export class ExprMember implements Expr {
+  readonly kind = ExprKind.MemberExpression;
   constructor(
-    public object: Expression,
-    public prop: Name,
+    public object: Expr,
+    public prop: Ident,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is MemberExpression {
-    return expr.kind === ExpressionKind.MemberExpression;
+  static is(expr: Expr): expr is ExprMember {
+    return expr.kind === ExprKind.MemberExpression;
   }
 }
 
-export class RangeExpression implements Expression {
-  readonly kind = ExpressionKind.Range;
+export class ExprRange implements Expr {
+  readonly kind = ExprKind.Range;
   constructor(
     public start: number,
     public end: number,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is RangeExpression {
-    return expr.kind === ExpressionKind.Range;
+  static is(expr: Expr): expr is ExprRange {
+    return expr.kind === ExprKind.Range;
   }
 }
 
-export class ArrayExpression implements Expression {
-  readonly kind = ExpressionKind.Array;
+export class ExprList implements Expr {
+  readonly kind = ExprKind.Array;
   constructor(
-    public elements: Expression[],
+    public elements: Expr[],
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is ArrayExpression {
-    return expr.kind === ExpressionKind.Array;
+  static is(expr: Expr): expr is ExprList {
+    return expr.kind === ExprKind.Array;
   }
 }
 
-export class Property implements Expression {
-  readonly kind = ExpressionKind.Property;
+export class ObjProp implements Expr {
+  readonly kind = ExprKind.Property;
   constructor(
-    public key: Expression,
-    public value: Expression,
+    public key: Expr,
+    public value: Expr,
     public shorthand: boolean,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is Property {
-    return expr.kind === ExpressionKind.Property;
+  static is(expr: Expr): expr is ObjProp {
+    return expr.kind === ExprKind.Property;
   }
 }
 
-export class ObjectExpression implements Expression {
-  readonly kind = ExpressionKind.Object;
+export class ExprObject implements Expr {
+  readonly kind = ExprKind.Object;
   constructor(
-    public props: Property[],
+    public props: ObjProp[],
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expression): expr is ObjectExpression {
-    return expr.kind === ExpressionKind.Object;
+  static is(expr: Expr): expr is ExprObject {
+    return expr.kind === ExprKind.Object;
   }
 }

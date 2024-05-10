@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  Name,
+  Ident,
   NameDeclaration,
   NameDeclarationType,
   NameDeclarator,
@@ -15,21 +15,22 @@ describe('Parser', () => {
     const src = `const radha = "krsna", krsna = "radha"
     let hello = "world", thing
     `;
+    console.log(src.slice(0, 38));
+    console.log(src.slice(0, 39));
     const lex = new Lexer(src);
     const parser = new Parser(lex);
-    const formula = parser.parse().formula;
-
+    const parsed = parser.parse();
     const body = [
       new NameDeclaration(
         [
           new NameDeclarator(
-            new Name('radha', new SrcSpan(6, 11)),
+            new Ident('radha', new SrcSpan(6, 11)),
             null,
             new SrcSpan(6, 21)
           ),
 
           new NameDeclarator(
-            new Name('krsna', new SrcSpan(23, 28)),
+            new Ident('krsna', new SrcSpan(23, 28)),
             null,
             new SrcSpan(23, 38)
           ),
@@ -41,13 +42,13 @@ describe('Parser', () => {
       new NameDeclaration(
         [
           new NameDeclarator(
-            new Name('hello', new SrcSpan(47, 52)),
+            new Ident('hello', new SrcSpan(47, 52)),
             null,
             new SrcSpan(47, 62)
           ),
 
           new NameDeclarator(
-            new Name('thing', new SrcSpan(64, 69)),
+            new Ident('thing', new SrcSpan(64, 69)),
             null,
             new SrcSpan(64, 69)
           ),
@@ -58,12 +59,15 @@ describe('Parser', () => {
     ];
 
     const expected = {
-      type: 'formula',
-      body,
+      formula: {
+        type: 'formula',
+        body,
+        span: new SrcSpan(0, 70),
+      },
       span: new SrcSpan(0, src.length),
     };
 
-    expect(formula).toEqual(expected);
+    expect(parsed).toEqual(expected);
   });
 
   test('bad name declaration', () => {
