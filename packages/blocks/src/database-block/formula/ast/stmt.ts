@@ -47,17 +47,11 @@ export class StmtFn implements Stmt {
   }
 }
 
-export enum LocalType {
-  Let = 'let',
-  Const = 'const',
-}
-
 export class StmtLocal implements Stmt {
   readonly kind = StmtKind.Local;
 
   constructor(
     public assignments: ExprLocalAssign[],
-    public type: LocalType,
     public span: SrcSpan
   ) {}
 

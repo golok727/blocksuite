@@ -57,7 +57,6 @@ export enum TokenKind {
   Unknown = 'misc:Unknown',
 
   // keywords
-  Const = 'kwd:Const',
   Fn = 'kwd:Fn',
   If = 'kwd:If',
   Else = 'kwd:Else',
@@ -133,7 +132,6 @@ export class LiteralToken<Type = LiteralTokenDataTypes> extends Token<Type> {
 
 export const KeywordToTokenKindMap: Record<string, TokenKind> = {
   let: TokenKind.Let,
-  const: TokenKind.Const,
   fn: TokenKind.Fn,
   if: TokenKind.If,
   else: TokenKind.Else,

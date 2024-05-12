@@ -60,7 +60,6 @@ export class Parser {
         return null;
 
       case TokenKind.Let:
-      case TokenKind.Const:
         return this.parseLocal();
 
       case TokenKind.Fn:
@@ -79,21 +78,16 @@ export class Parser {
 
   // without let or const consumed
   private parseLocal() {
-    const letOrConst = this.nextToken(); // eat let or const
-
-    const type =
-      letOrConst.kind === TokenKind.Let
-        ? Ast.LocalType.Let
-        : Ast.LocalType.Const;
+    const letTok = this.nextToken(); // eat let or const
 
     const [assignments, span] = this.series(
       this.parseAssignments,
       TokenKind.Comma
     );
 
-    const bindingsSpan = letOrConst.span.merge(span);
+    const bindingsSpan = letTok.span.merge(span);
 
-    return new Ast.StmtLocal(assignments, type, bindingsSpan);
+    return new Ast.StmtLocal(assignments, bindingsSpan);
   }
 
   private parseAssignments: SeriesParseFn<Ast.ExprLocalAssign> = () => {

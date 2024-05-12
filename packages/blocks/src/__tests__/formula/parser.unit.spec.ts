@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest';
 import {
   ExprLocalAssign,
   Ident,
-  LocalType,
   StmtLocal,
 } from '../../database-block/formula/ast/index.js';
 import { Lexer } from '../../database-block/formula/parser/lexer.js';
@@ -12,7 +11,7 @@ import { SrcSpan } from '../../database-block/formula/span.js';
 
 describe('Parser', () => {
   test('Basic', () => {
-    const src = `const radha = "krsna", krsna = "radha"
+    const src = `let radha = "krsna", krsna = "radha"
     let hello = "world", thing`;
 
     const lex = new Lexer(src);
@@ -22,37 +21,35 @@ describe('Parser', () => {
       new StmtLocal(
         [
           new ExprLocalAssign(
-            new Ident('radha', new SrcSpan(6, 11)),
+            new Ident('radha', new SrcSpan(4, 9)),
             null,
-            new SrcSpan(6, 21)
+            new SrcSpan(4, 19)
           ),
 
           new ExprLocalAssign(
-            new Ident('krsna', new SrcSpan(23, 28)),
+            new Ident('krsna', new SrcSpan(21, 26)),
             null,
-            new SrcSpan(23, 38)
+            new SrcSpan(21, 36)
           ),
         ],
-        LocalType.Const,
-        new SrcSpan(0, 38)
+        new SrcSpan(0, 36)
       ),
 
       new StmtLocal(
         [
           new ExprLocalAssign(
-            new Ident('hello', new SrcSpan(47, 52)),
+            new Ident('hello', new SrcSpan(45, 50)),
             null,
-            new SrcSpan(47, 62)
+            new SrcSpan(45, 60)
           ),
 
           new ExprLocalAssign(
-            new Ident('thing', new SrcSpan(64, 69)),
+            new Ident('thing', new SrcSpan(62, 67)),
             null,
-            new SrcSpan(64, 69)
+            new SrcSpan(62, 67)
           ),
         ],
-        LocalType.Let,
-        new SrcSpan(43, 69)
+        new SrcSpan(41, 67)
       ),
     ];
 
