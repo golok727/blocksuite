@@ -21,7 +21,7 @@ export class Parser {
 
   constructor(public readonly lex: Lexer) {
     /*   
-    my be in future we can have different modes like formula or script
+    todo: add feature flag for formula or script 
    */
     this.tok0 = this.lex.advance();
     this.tok1 = this.lex.advance();
@@ -89,7 +89,7 @@ export class Parser {
     return new Ast.StmtLocal(assignments, bindingsSpan);
   }
 
-  private parseAssignments: SeriesParseFn<Ast.ExprLocalAssign> = () => {
+  private parseAssignments: SeriesParseFn<Ast.ExprLocalAssignment> = () => {
     // this will be terminated when the commas are over
     // make sure to stop the tok0 at a comma to parse the rest before returning
     const nameTok = this.nextToken() as LiteralToken<string>;
@@ -99,23 +99,18 @@ export class Parser {
     // todo pattern ? let [a] = [1, 2] || let {name} = {name: "block"}
     const ident = new Ast.Ident(nameTok.data, nameTok.span);
 
-    const bindingSpan = ident.span.clone();
+    const assignmentSpan = ident.span.clone();
 
     if (this.eatIf(TokenKind.Eq)) {
-      bindingSpan.merge(this.tok0.span);
+      const expr = this.parseExpr();
 
-      // todo we will change this with a expression parser
-      while (
-        !this.isEof() &&
-        this.tok0.kind !== TokenKind.Comma &&
-        this.tok0.kind !== TokenKind.NewLine &&
-        this.tok0.kind !== TokenKind.Semi
-      ) {
-        bindingSpan.mergeMut(this.nextToken().span);
-      }
+      if (!expr) throw new Error('Expected an expr after = '); // todo better error
 
-      return new Ast.ExprLocalAssign(ident, null, bindingSpan); // todo parse
+      assignmentSpan.mergeMut(expr.span);
+
+      return new Ast.ExprLocalAssignment(ident, expr, assignmentSpan); // todo parse
     } else {
+      // todo change this to use the series
       // trailing comma
       if (
         this.tok0.kind === TokenKind.Comma &&
@@ -123,7 +118,7 @@ export class Parser {
       )
         throw new Error('Trailing commas are not allowed');
 
-      return new Ast.ExprLocalAssign(ident, null, bindingSpan); // uninitialized var
+      return new Ast.ExprLocalAssignment(ident, null, assignmentSpan); // uninitialized var
     }
   };
 
@@ -204,7 +199,9 @@ export class Parser {
       case TokenKind.Bool:
         this.nextToken();
         return new Ast.ExprLit((tok as LiteralToken).data, tok.span);
-
+      case TokenKind.Name:
+        this.nextToken();
+        return new Ast.Ident((tok as LiteralToken<string>).data, tok.span);
       default: {
         return null;
       }

@@ -1,5 +1,5 @@
 import type { Spannable, SrcSpan } from '../span.js';
-import type { Expr, ExprLocalAssign, Ident } from './expr.js';
+import type { Expr, ExprLocalAssignment, Ident } from './expr.js';
 
 export enum StmtKind {
   Fn,
@@ -51,7 +51,7 @@ export class StmtLocal implements Stmt {
   readonly kind = StmtKind.Local;
 
   constructor(
-    public assignments: ExprLocalAssign[],
+    public assignments: ExprLocalAssignment[],
     public span: SrcSpan
   ) {}
 

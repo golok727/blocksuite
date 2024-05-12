@@ -140,7 +140,7 @@ export class ExprAssign implements Expr {
   }
 }
 
-export class ExprLocalAssign implements Expr {
+export class ExprLocalAssignment implements Expr {
   readonly kind = ExprKind.LocalAssignment;
   constructor(
     public name: Ident,
@@ -148,7 +148,7 @@ export class ExprLocalAssign implements Expr {
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expr): expr is ExprLocalAssign {
+  static is(expr: Expr): expr is ExprLocalAssignment {
     return expr.kind === ExprKind.LocalAssignment;
   }
 }
