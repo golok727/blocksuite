@@ -146,12 +146,12 @@ export class Parser {
           [mayBeOp, precedence],
           opStack,
           exprStack,
-          this.opExprReducer
+          this.reduceOpExpr
         );
       } else break; // not an op
     }
 
-    return this.handleOperator(null, opStack, exprStack, this.opExprReducer);
+    return this.handleOperator(null, opStack, exprStack, this.reduceOpExpr);
   }
 
   private handleOperator(
@@ -208,17 +208,17 @@ export class Parser {
     }
   }
 
-  private opExprReducer = (op: Token, exprStack: Ast.Expr[]) => {
+  private reduceOpExpr = (op: Token, exprStack: Ast.Expr[]) => {
     const right = exprStack.pop();
     const left = exprStack.pop();
     if (!left || !right)
       throw new Error(
         '@@internal Cant reduce expression. required minimum of 2 expr'
       );
-    exprStack.push(this.exprOpReducer(op, left, right));
+    exprStack.push(this.makeOpExpr(op, left, right));
   };
 
-  private exprOpReducer(opTok: Token, left: Ast.Expr, right: Ast.Expr) {
+  private makeOpExpr(opTok: Token, left: Ast.Expr, right: Ast.Expr) {
     const op = this.tokenToOp(opTok.kind);
     if (!op) throw new Error(`@@internal Unexpected op ${opTok.kind}`);
 
