@@ -33,14 +33,19 @@ export enum ExprKind {
 }
 
 export enum OpBin {
+  And,
+  Or,
+
+  Eq,
+  NotEq,
+
   Add,
   Mul,
-  IntDiv,
   Div,
   Sub,
   Exp,
-  Eq,
-  NotEq,
+  Rem,
+
   GtEq,
   LtEq,
   Gt,
@@ -48,8 +53,8 @@ export enum OpBin {
 }
 
 export enum OpUnary {
-  Not,
-  Negate,
+  NegateBool,
+  NegateNumber,
 }
 
 export interface Expr extends Spannable {
@@ -281,5 +286,37 @@ export class ExprForLoop implements Expr {
 
   static is(expr: Expr): expr is ExprForLoop {
     return expr.kind === ExprKind.ForLoop;
+  }
+}
+
+export function getOpPrecedence(op: OpBin): number {
+  switch (op) {
+    case OpBin.Or:
+      return 1;
+
+    case OpBin.And:
+      return 2;
+
+    case OpBin.Eq:
+    case OpBin.NotEq:
+      return 3;
+
+    case OpBin.Lt:
+    case OpBin.LtEq:
+    case OpBin.Gt:
+    case OpBin.GtEq:
+      return 4;
+
+    case OpBin.Add:
+    case OpBin.Sub:
+      return 5;
+
+    case OpBin.Mul:
+    case OpBin.Div:
+    case OpBin.Rem:
+      return 6;
+
+    case OpBin.Exp:
+      return 7;
   }
 }

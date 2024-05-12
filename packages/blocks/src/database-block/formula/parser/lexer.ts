@@ -187,10 +187,19 @@ export class Lexer {
         return this.lexSymbol(c);
       }
 
+      case '*': {
+        if (this.peekNext() === '*') {
+          this.nextChar();
+          return this.lexSymbol('**');
+        }
+        return this.lexSymbol(c);
+      }
+
       case ' ':
       case '\t': {
         return this.advance(); // should skip whitespace
       }
+
       case '@':
       case ':':
       case '?':
@@ -206,7 +215,6 @@ export class Lexer {
       case '{':
       case '}':
       case '+':
-      case '*':
       case ',':
       case '\n':
         return this.lexSymbol(c);

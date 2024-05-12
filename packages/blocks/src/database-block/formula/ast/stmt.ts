@@ -12,10 +12,10 @@ export interface Stmt extends Spannable {
   readonly kind: StmtKind;
 }
 
-export class StmtItem implements Stmt {
+export class StmtExpr implements Stmt {
   readonly kind = StmtKind.Expr;
   constructor(
-    public stmt: Expr,
+    public expr: Expr,
     public span: SrcSpan
   ) {}
 }

@@ -14,8 +14,8 @@ export interface Parsed {
 }
 
 export class Parser {
-  private tokCur: Token;
-  private tokNxt: Token;
+  private tok0: Token;
+  private tok1: Token;
 
   private line: number = 0;
 
@@ -23,12 +23,12 @@ export class Parser {
     /*   
     my be in future we can have different modes like formula or script
    */
-    this.tokCur = this.lex.advance();
-    this.tokNxt = this.lex.advance();
+    this.tok0 = this.lex.advance();
+    this.tok1 = this.lex.advance();
   }
 
   isEof() {
-    return this.tokCur.kind === TokenKind.Eof;
+    return this.tok0.kind === TokenKind.Eof;
   }
 
   parse(): Parsed {
@@ -55,7 +55,7 @@ export class Parser {
   }
 
   private parseStatement: SeriesParseFn<Ast.Stmt> = () => {
-    switch (this.tokCur.kind) {
+    switch (this.tok0.kind) {
       case TokenKind.Eof:
         return null;
 
@@ -66,8 +66,13 @@ export class Parser {
       case TokenKind.Fn:
         return Skip;
 
-      default:
-        return Skip; // todo parse expr and map it into a expr
+      default: {
+        const expr = this.parseExpression();
+        if (expr) {
+          return new Ast.StmtExpr(expr, expr.span);
+        }
+        return Skip;
+      }
     }
   };
 
@@ -102,15 +107,15 @@ export class Parser {
 
     const bindingSpan = ident.span.clone();
 
-    if (this.eatOneIf(TokenKind.Eq)) {
-      bindingSpan.merge(this.tokCur.span);
+    if (this.eatIf(TokenKind.Eq)) {
+      bindingSpan.merge(this.tok0.span);
 
       // todo we will change this with a expression parser
       while (
         !this.isEof() &&
-        this.tokCur.kind !== TokenKind.Comma &&
-        this.tokCur.kind !== TokenKind.NewLine &&
-        this.tokCur.kind !== TokenKind.Semi
+        this.tok0.kind !== TokenKind.Comma &&
+        this.tok0.kind !== TokenKind.NewLine &&
+        this.tok0.kind !== TokenKind.Semi
       ) {
         bindingSpan.mergeMut(this.nextToken().span);
       }
@@ -119,8 +124,8 @@ export class Parser {
     } else {
       // trailing comma
       if (
-        this.tokCur.kind === TokenKind.Comma &&
-        this.tokNxt.kind !== TokenKind.Name
+        this.tok0.kind === TokenKind.Comma &&
+        this.tok1.kind !== TokenKind.Name
       )
         throw new Error('Trailing commas are not allowed');
 
@@ -128,10 +133,97 @@ export class Parser {
     }
   };
 
+  // ---- Begin Expr
+  private parseExpression(): Ast.Expr | null {
+    const exprStack: Ast.Expr[] = [];
+    const opStack: Ast.OpBin[] = [];
+    opStack;
+
+    while (!this.isEof()) {
+      // get expr
+      const uniExpr = this.parseUnitExpression();
+      if (uniExpr) {
+        exprStack.push(uniExpr);
+      } else if (exprStack.length === 0) return null;
+      else {
+        throw new Error('Op naked right'); // todo better error
+      }
+
+      // get op
+    }
+
+    console.log(exprStack);
+    return null;
+  }
+
+  private parseUnitExpression(): Ast.Expr | null {
+    const tok = this.tok0;
+    switch (tok.kind) {
+      case TokenKind.String:
+      case TokenKind.Number:
+      case TokenKind.Bool:
+        this.nextToken();
+        return new Ast.ExprLit((tok as LiteralToken).data, tok.span);
+
+      default: {
+        return null;
+      }
+    }
+  }
+
+  // ----- End Expr
   // -- PARSER
+  private precedence(t: TokenKind) {
+    const op = this.tokenToOp(t);
+    if (!op) return null;
+    return Ast.getOpPrecedence(op);
+  }
+
+  private tokenToOp(t: TokenKind): Ast.OpBin | null {
+    switch (t) {
+      // logical
+      case TokenKind.And:
+        return Ast.OpBin.And;
+      case TokenKind.Or:
+        return Ast.OpBin.Or;
+
+      // equality
+      case TokenKind.NotEq:
+        return Ast.OpBin.NotEq;
+      case TokenKind.EqEq:
+        return Ast.OpBin.Eq;
+
+      // math
+      case TokenKind.Plus:
+        return Ast.OpBin.Add;
+      case TokenKind.Minus:
+        return Ast.OpBin.Sub;
+      case TokenKind.Star:
+        return Ast.OpBin.Mul;
+      case TokenKind.Slash:
+        return Ast.OpBin.Div;
+      case TokenKind.StarStar:
+        return Ast.OpBin.Exp;
+      case TokenKind.Percent:
+        return Ast.OpBin.Rem;
+
+      //
+      case TokenKind.GtEq:
+        return Ast.OpBin.GtEq;
+      case TokenKind.LtEq:
+        return Ast.OpBin.LtEq;
+      case TokenKind.Gt:
+        return Ast.OpBin.Gt;
+      case TokenKind.Lt:
+        return Ast.OpBin.Lt;
+
+      default:
+        return null;
+    }
+  }
 
   private nextToken() {
-    const tok = this.tokCur;
+    const tok = this.tok0;
 
     let nxt: Token = this.lex.advance();
 
@@ -149,13 +241,13 @@ export class Parser {
       nxt = this.lex.advance();
     }
 
-    this.tokCur = this.tokNxt;
-    this.tokNxt = nxt;
+    this.tok0 = this.tok1;
+    this.tok1 = nxt;
     return tok;
   }
 
-  private eatOneIf(kind: TokenKind) {
-    const tok = this.tokCur;
+  private eatIf(kind: TokenKind) {
+    const tok = this.tok0;
     if (tok.kind === kind) {
       return this.nextToken();
     }
@@ -171,8 +263,8 @@ export class Parser {
     delim?: TokenKind
   ): [result: R[], span: SrcSpan] {
     const series: R[] = [];
-    const start = this.tokCur.span;
-    let end = this.tokCur.span;
+    const start = this.tok0.span;
+    let end = this.tok0.span;
     for (;;) {
       const parsed = parse();
       if (parsed === Skip) {
@@ -181,7 +273,7 @@ export class Parser {
       }
 
       if (parsed === null) {
-        end = this.tokCur.span;
+        end = this.tok0.span;
         break;
       }
 
@@ -189,9 +281,9 @@ export class Parser {
       end = parsed.span;
 
       if (delim !== undefined) {
-        if (!this.eatOneIf(delim)) break;
+        if (!this.eatIf(delim)) break;
         // check if the delim is repeated  // [1 ,,]
-        if (this.eatOneIf(delim)) throw new Error('Extra separator'); // todo use parse error
+        if (this.eatIf(delim)) throw new Error('Extra separator'); // todo use parse error
       }
     }
 

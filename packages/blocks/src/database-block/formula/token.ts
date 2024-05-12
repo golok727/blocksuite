@@ -17,6 +17,7 @@ export enum TokenKind {
   Plus = 'sym:Plus',
   Minus = 'sym:Minus',
   Star = 'sym:Star',
+  StarStar = 'sym:StarStar',
   Slash = 'sym:Slash',
   Lt = 'sym:Lt', // <
   Gt = 'sym:Gt', // >
@@ -166,6 +167,7 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '+': TokenKind.Plus,
   '-': TokenKind.Minus,
   '*': TokenKind.Star,
+  '**': TokenKind.StarStar,
   '/': TokenKind.Slash,
   '=': TokenKind.Eq,
 
