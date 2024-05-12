@@ -175,10 +175,10 @@ export class Parser {
     for (;;) {
       const op = opStack.pop();
       if (!op && !nextOp) {
-        const final = exprStack.pop();
-        if (!final) return null;
-        if (exprStack.length === 0) return final;
-        throw new Error('Expression not fully reduced');
+        const expr = exprStack.pop();
+        if (!expr) return null;
+        if (exprStack.length === 0) return expr;
+        throw new Error('Expression not fully reduced for some reason');
       } else if (!op && nextOp) {
         opStack.push(nextOp);
         break;
