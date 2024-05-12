@@ -16,7 +16,7 @@ export interface Parsed {
 export class Parser {
   private tok0: Token;
   private tok1: Token;
-
+  // @ts-ignore
   private line: number = 0;
 
   constructor(public readonly lex: Lexer) {
@@ -67,7 +67,6 @@ export class Parser {
 
       default: {
         const expr = this.parseExpr();
-        console.log('Expr', expr);
         if (expr) {
           return new Ast.StmtExpr(expr, expr.span);
         }
@@ -169,10 +168,13 @@ export class Parser {
     for (;;) {
       const op = opStack.pop();
       if (!op && !nextOp) {
+        // if we don't have any operators left return the final expr
         const expr = exprStack.pop();
         if (!expr) return null;
         if (exprStack.length === 0) return expr;
-        throw new Error('Expression not fully reduced for some reason');
+        throw new Error(
+          '@@internal Expression not fully reduced for some reason'
+        );
       } else if (!op && nextOp) {
         opStack.push(nextOp);
         break;
@@ -194,22 +196,6 @@ export class Parser {
     return null;
   }
 
-  private opExprReducer = (op: Token, exprStack: Ast.Expr[]) => {
-    const left = exprStack.pop();
-    const right = exprStack.pop();
-    if (!left || !right)
-      throw new Error('Cant reduce expression. required minimum of 2 expr');
-    exprStack.push(this.exprOpReducer(op, left, right));
-  };
-
-  private exprOpReducer(opTok: Token, left: Ast.Expr, right: Ast.Expr) {
-    const op = this.tokenToOp(opTok.kind);
-    if (!op) throw new Error(`Unexpected op ${opTok.kind}`);
-
-    const span = left.span.merge(opTok.span).merge(right.span);
-    return new Ast.ExprBin(left, op, right, span);
-  }
-
   private parseExprUnit(): Ast.Expr | null {
     const tok = this.tok0;
     switch (tok.kind) {
@@ -223,6 +209,24 @@ export class Parser {
         return null;
       }
     }
+  }
+
+  private opExprReducer = (op: Token, exprStack: Ast.Expr[]) => {
+    const right = exprStack.pop();
+    const left = exprStack.pop();
+    if (!left || !right)
+      throw new Error(
+        '@@internal Cant reduce expression. required minimum of 2 expr'
+      );
+    exprStack.push(this.exprOpReducer(op, left, right));
+  };
+
+  private exprOpReducer(opTok: Token, left: Ast.Expr, right: Ast.Expr) {
+    const op = this.tokenToOp(opTok.kind);
+    if (!op) throw new Error(`@@internal Unexpected op ${opTok.kind}`);
+
+    const span = left.span.merge(opTok.span).merge(right.span);
+    return new Ast.ExprBin(left, op, right, span);
   }
 
   // ----- End Expr

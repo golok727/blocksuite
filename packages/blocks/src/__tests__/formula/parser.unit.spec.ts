@@ -1,8 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
 import {
+  ExprBin,
+  ExprLit,
   ExprLocalAssign,
   Ident,
+  OpBin,
+  StmtExpr,
   StmtLocal,
 } from '../../database-block/formula/ast/index.js';
 import { Lexer } from '../../database-block/formula/parser/lexer.js';
@@ -65,14 +69,6 @@ describe('Parser', () => {
   });
 
   test('bad name declaration', () => {
-    // const or let with bad name
-    {
-      const src = `const 1123`;
-      const lex = new Lexer(src);
-      const parser = new Parser(lex);
-      expect(() => parser.parse()).toThrow('Expected a name');
-    }
-
     {
       const src = `let`;
       const lex = new Lexer(src);
@@ -82,7 +78,7 @@ describe('Parser', () => {
 
     // with trailing comma
     {
-      const src = `const a,`;
+      const src = `let a,`;
       const lex = new Lexer(src);
       const parser = new Parser(lex);
       expect(() => parser.parse()).toThrow('Trailing commas are not allowed');
@@ -90,11 +86,30 @@ describe('Parser', () => {
   });
 
   test('expression', () => {
-    const src = `2 + 4 * 2 ** 10
-    let a = 10
-    let b = "hello"`;
+    const src = `2 + 4 * 2 ** 10`;
     const parser = new Parser(new Lexer(src));
     const res = parser.parse().formula.body;
-    console.log(res);
+    const expected = [
+      new StmtExpr(
+        new ExprBin(
+          new ExprLit(2, new SrcSpan(0, 1)),
+          OpBin.Add,
+          new ExprBin(
+            new ExprLit(4, new SrcSpan(4, 5)),
+            OpBin.Mul,
+            new ExprBin(
+              new ExprLit(2, new SrcSpan(8, 9)),
+              OpBin.Exp,
+              new ExprLit(10, new SrcSpan(13, 15)),
+              new SrcSpan(8, 15)
+            ),
+            new SrcSpan(4, 15)
+          ),
+          new SrcSpan(0, 15)
+        ),
+        new SrcSpan(0, 15)
+      ),
+    ];
+    expect(res).toEqual(expected);
   });
 });
