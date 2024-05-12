@@ -28,7 +28,7 @@ export enum TokenKind {
   Bang = 'sym:Bang', // '!'
   Caret = 'sym:Caret',
   BitwiseOr = 'sym:BitwiseOr', // '|'
-  BitwiseAnd = 'sym:BitwiseAnd', // '&&'
+  BitwiseAnd = 'sym:BitwiseAnd', // '&'
 
   Question = 'sym:Question',
   Colon = 'sym:Colon',
@@ -43,13 +43,11 @@ export enum TokenKind {
   GtGt = 'sym:GtGt', // '>>'
 
   ThinArrow = 'sym:RightArrow', // '->'
-  FatArrow = 'sym:FatArrow',
 
   Dot = 'sym:Dot', // '.'
   DotEq = 'sym:DotEq', // '.='
   DotDot = 'sym:DotDot', // '..'
   DotDotDot = 'sym:DotDotDot', // '...'
-  At = 'sym:At', // '@'
   Eof = 'sym:Eof', // End of File
 
   Comment = 'misc:Comment',
@@ -60,9 +58,9 @@ export enum TokenKind {
   Fn = 'kwd:Fn',
   If = 'kwd:If',
   Else = 'kwd:Else',
-  ElseIf = 'kwd:ElseIf',
   Match = 'kwd:Match',
   Let = 'kwd:Let',
+  FatArrow = 'sym:FatArrow',
   While = 'kwd:While',
   For = 'kwd:For',
   In = 'kwd:In',
@@ -135,7 +133,6 @@ export const KeywordToTokenKindMap: Record<string, TokenKind> = {
   fn: TokenKind.Fn,
   if: TokenKind.If,
   else: TokenKind.Else,
-  elif: TokenKind.ElseIf,
   match: TokenKind.Match,
   while: TokenKind.While,
   for: TokenKind.For,
@@ -147,7 +144,6 @@ export const KeywordToTokenKindMap: Record<string, TokenKind> = {
 
 export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '!': TokenKind.Bang,
-  '@': TokenKind.At,
   '%': TokenKind.Percent,
   '^': TokenKind.Caret,
   ',': TokenKind.Comma,
@@ -181,7 +177,6 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   ';': TokenKind.Semi,
 
   '->': TokenKind.ThinArrow,
-  '=>': TokenKind.FatArrow,
 
   '.': TokenKind.Dot,
   '.=': TokenKind.DotEq,

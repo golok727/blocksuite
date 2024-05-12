@@ -138,7 +138,7 @@ export class Lexer {
       case '=': {
         const next = this.peekNext();
 
-        if (next === '=' || next == '>') {
+        if (next === '=') {
           this.nextChar();
           return this.lexSymbol(c + next);
         }
