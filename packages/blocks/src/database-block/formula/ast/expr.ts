@@ -33,23 +33,23 @@ export enum ExprKind {
 }
 
 export enum OpBin {
-  And,
-  Or,
+  And = 'and',
+  Or = 'or',
 
-  Eq,
-  NotEq,
+  Eq = '==',
+  NotEq = '!=',
 
-  Add,
-  Mul,
-  Div,
-  Sub,
-  Exp,
-  Rem,
+  Add = '+',
+  Mul = '*',
+  Div = '/',
+  Sub = '',
+  Exp = '**',
+  Rem = '%',
 
-  GtEq,
-  LtEq,
-  Gt,
-  Lt,
+  GtEq = '>=',
+  LtEq = '<=',
+  Gt = '>',
+  Lt = '<',
 }
 
 export enum OpUnary {
@@ -117,7 +117,7 @@ export class ExprBin implements Expr {
   readonly kind = ExprKind.Binary;
   constructor(
     public left: Expr,
-    public op: OpUnary,
+    public op: OpBin,
     public right: Expr,
     public span: SrcSpan
   ) {}

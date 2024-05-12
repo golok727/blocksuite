@@ -91,4 +91,13 @@ describe('Parser', () => {
       expect(() => parser.parse()).toThrow('Trailing commas are not allowed');
     }
   });
+
+  test('expression', () => {
+    const src = `2 + 4 * 2 ** 10
+    let a = 10
+    let b = "hello"`;
+    const parser = new Parser(new Lexer(src));
+    const res = parser.parse().formula.body;
+    console.log(res);
+  });
 });

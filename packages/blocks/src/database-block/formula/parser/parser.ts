@@ -67,7 +67,8 @@ export class Parser {
         return Skip;
 
       default: {
-        const expr = this.parseExpression();
+        const expr = this.parseExpr();
+        console.log('Expr', expr);
         if (expr) {
           return new Ast.StmtExpr(expr, expr.span);
         }
@@ -134,14 +135,14 @@ export class Parser {
   };
 
   // ---- Begin Expr
-  private parseExpression(): Ast.Expr | null {
+  private parseExpr(): Ast.Expr | null {
     const exprStack: Ast.Expr[] = [];
-    const opStack: Ast.OpBin[] = [];
+    const opStack: [tok: Token, precedence: number][] = [];
     opStack;
 
-    while (!this.isEof()) {
+    for (;;) {
       // get expr
-      const uniExpr = this.parseUnitExpression();
+      const uniExpr = this.parseExprUnit();
       if (uniExpr) {
         exprStack.push(uniExpr);
       } else if (exprStack.length === 0) return null;
@@ -149,14 +150,73 @@ export class Parser {
         throw new Error('Op naked right'); // todo better error
       }
 
-      // get op
+      const mayBeOp = this.tok0;
+      const precedence = this.precedence(mayBeOp.kind);
+      if (precedence) {
+        this.nextToken();
+        this.handleOperator(
+          [mayBeOp, precedence],
+          opStack,
+          exprStack,
+          this.opExprReducer
+        );
+      } else break; // not an op
     }
 
-    console.log(exprStack);
+    return this.handleOperator(null, opStack, exprStack, this.opExprReducer);
+  }
+
+  private handleOperator(
+    nextOp: [Token, number] | null,
+    opStack: [Token, number][],
+    exprStack: Ast.Expr[],
+    reducer: (op: Token, exprStack: Ast.Expr[]) => void
+  ): Ast.Expr | null {
+    for (;;) {
+      const op = opStack.pop();
+      if (!op && !nextOp) {
+        const final = exprStack.pop();
+        if (!final) return null;
+        if (exprStack.length === 0) return final;
+        throw new Error('Expression not fully reduced');
+      } else if (!op && nextOp) {
+        opStack.push(nextOp);
+        break;
+      } else if (op && !nextOp) {
+        reducer(op[0], exprStack);
+      } else if (op && nextOp) {
+        const [opl, pl] = op;
+        const [opr, pr] = nextOp;
+        if (pl >= pr) {
+          reducer(opl, exprStack);
+          nextOp = [opr, pr];
+        } else {
+          opStack.push([opl, pl]);
+          opStack.push([opr, pr]);
+          break;
+        }
+      } else break;
+    }
     return null;
   }
 
-  private parseUnitExpression(): Ast.Expr | null {
+  private opExprReducer = (op: Token, exprStack: Ast.Expr[]) => {
+    const left = exprStack.pop();
+    const right = exprStack.pop();
+    if (!left || !right)
+      throw new Error('Cant reduce expression. required minimum of 2 expr');
+    exprStack.push(this.exprOpReducer(op, left, right));
+  };
+
+  private exprOpReducer(opTok: Token, left: Ast.Expr, right: Ast.Expr) {
+    const op = this.tokenToOp(opTok.kind);
+    if (!op) throw new Error(`Unexpected op ${opTok.kind}`);
+
+    const span = left.span.merge(opTok.span).merge(right.span);
+    return new Ast.ExprBin(left, op, right, span);
+  }
+
+  private parseExprUnit(): Ast.Expr | null {
     const tok = this.tok0;
     switch (tok.kind) {
       case TokenKind.String:
