@@ -3,6 +3,7 @@ import type { Block } from '@blocksuite/store';
 import type { SrcSpan } from '../span.js';
 import { type Spannable } from '../span.js';
 
+// Todo patterns
 export enum ExprKind {
   Literal,
   TemplateLiteral,
@@ -24,6 +25,7 @@ export enum ExprKind {
   MemberExpression,
   Range,
   ArrowFn,
+  Fn,
 
   If,
   While,
@@ -230,6 +232,20 @@ export class ExprObject implements Expr {
   }
 }
 
+export class ExprFn implements Expr {
+  readonly kind = ExprKind.Fn;
+
+  constructor(
+    public name: Ident,
+    public params: Expr[],
+    public body: Block,
+    public span: SrcSpan
+  ) {}
+
+  static is(stmt: ExprFn): stmt is ExprFn {
+    return stmt.kind === ExprKind.Fn;
+  }
+}
 export class ExprArrowFn implements Expr {
   readonly kind = ExprKind.ArrowFn;
 
