@@ -223,7 +223,6 @@ describe('Parser', () => {
      
     `;
     const parsed = Parser.parse(src).formula.body;
-    console.log(parsed);
     expect(parsed.length).toBe(3);
   });
 });

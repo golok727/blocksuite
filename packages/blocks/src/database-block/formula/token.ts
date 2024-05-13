@@ -42,7 +42,8 @@ export enum TokenKind {
   LtLt = 'sym:GtLt', // '<<'
   GtGt = 'sym:GtGt', // '>>'
 
-  ThinArrow = 'sym:RightArrow', // '->'
+  ThinArrow = 'sym:ThinArrow', // '->'
+  FatArrow = 'sym:FatArrow',
 
   Dot = 'sym:Dot', // '.'
   DotEq = 'sym:DotEq', // '.='
@@ -60,7 +61,6 @@ export enum TokenKind {
   Else = 'kwd:Else',
   Match = 'kwd:Match',
   Let = 'kwd:Let',
-  FatArrow = 'sym:FatArrow',
   While = 'kwd:While',
   For = 'kwd:For',
   In = 'kwd:In',
@@ -177,6 +177,7 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   ';': TokenKind.Semi,
 
   '->': TokenKind.ThinArrow,
+  '=>': TokenKind.ThinArrow,
 
   '.': TokenKind.Dot,
   '.=': TokenKind.DotEq,
