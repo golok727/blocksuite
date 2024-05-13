@@ -90,6 +90,11 @@ export class Parser {
         return ret;
       }
 
+      case TokenKind.LeftBrace: {
+        const block = this.parseBlock();
+        return new Ast.StmtExpr(block, block.span.clone());
+      }
+
       case TokenKind.NewLine: {
         this.nextToken();
         return Continue;
@@ -98,7 +103,7 @@ export class Parser {
       default: {
         const expr = this.parseExpr();
         if (!expr) return null;
-        return new Ast.StmtExpr(expr, expr.span);
+        return new Ast.StmtExpr(expr, expr.span.clone());
       }
     }
   };
@@ -234,6 +239,8 @@ export class Parser {
   // with brace
   private parseBlock() {
     const lBrace = this.nextToken();
+    if (lBrace.kind !== TokenKind.LeftBrace)
+      throw new Error('Expected a left brace'); // todo debug
     const [stmts] = this.parseStatementSequence();
 
     const rBrace = this.eatOne(TokenKind.RightBrace); // todo make a expect one
@@ -310,7 +317,7 @@ export class Parser {
         this.nextToken();
         return new Ast.Ident((tok as LiteralToken<string>).data, tok.span);
 
-      // grouping
+      // grouping (
       case TokenKind.LeftParen: {
         this.nextToken(); // (
         const expr = this.parseExpr();
@@ -321,12 +328,44 @@ export class Parser {
         if (!this.eatOne(TokenKind.RightParen)) {
           throw new Error('Expected a ")" after expression'); // todo error
         }
-
+        // todo check for arrow function
         return expr;
       }
+      /*
+        fn name() {
 
+        }
+
+        fn() {
+        } // anonymous
+        
+       */
+      case TokenKind.Fn: {
+        throw new Error('Functions are under construction');
+      }
+
+      /*
+        match (cond) {
+          case1 => this, 
+          case2 => {
+            blah + blah
+            blah
+          }
+        }
+      */
+      case TokenKind.Match: {
+        throw new Error('Match cases are under construction');
+      }
+
+      // { this will be for maps
       case TokenKind.LeftBrace: {
-        return this.parseBlock();
+        // todo
+        throw new Error('Objects are under construction');
+      }
+
+      case TokenKind.LeftBracket: {
+        // todo
+        throw new Error('Lists are under construction');
       }
 
       default: {

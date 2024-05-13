@@ -218,7 +218,11 @@ describe('Parser', () => {
       { 
         let a = "Hello"
         let thing = "thing"
+        {
+          let another = "thing"
+        }
       }
+      
       let world = "hello"
      
     `;
