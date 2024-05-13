@@ -14,7 +14,8 @@ export enum ExprKind {
   Object,
   Property,
 
-  Unary,
+  NegateBool, // !false !true
+  NegateNumber, // -1 , -1.2
   Binary,
 
   Assignment,
@@ -34,7 +35,7 @@ export enum ExprKind {
   Empty,
 }
 
-export enum OpBin {
+export enum BinOp {
   And = 'and',
   Or = 'or',
 
@@ -53,12 +54,6 @@ export enum OpBin {
   Gt = '>',
   Lt = '<',
 }
-
-export enum OpUnary {
-  NegateBool,
-  NegateNumber,
-}
-
 export interface Expr extends Spannable {
   kind: ExprKind;
 }
@@ -102,29 +97,40 @@ export class Ident implements Expr {
   }
 }
 
-export class ExprUnary implements Expr {
-  readonly kind = ExprKind.Unary;
+export class ExprNegateBool implements Expr {
+  readonly kind = ExprKind.NegateBool;
   constructor(
-    public op: OpUnary,
     public arg: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expr): expr is ExprUnary {
-    return expr.kind === ExprKind.Unary;
+  static is(expr: Expr): expr is ExprNegateBool {
+    return expr.kind === ExprKind.NegateBool;
   }
 }
 
-export class ExprBin implements Expr {
+export class ExprNegateNumber implements Expr {
+  readonly kind = ExprKind.NegateNumber;
+  constructor(
+    public arg: Expr,
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is ExprNegateNumber {
+    return expr.kind === ExprKind.NegateNumber;
+  }
+}
+
+export class ExprBinary implements Expr {
   readonly kind = ExprKind.Binary;
   constructor(
     public left: Expr,
-    public op: OpBin,
+    public op: BinOp,
     public right: Expr,
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expr): expr is ExprBin {
+  static is(expr: Expr): expr is ExprBinary {
     return expr.kind === ExprKind.Binary;
   }
 }
@@ -206,7 +212,7 @@ export class ExprList implements Expr {
   }
 }
 
-export class ObjProp implements Expr {
+export class ObjectProp implements Expr {
   readonly kind = ExprKind.Property;
   constructor(
     public key: Expr,
@@ -215,7 +221,7 @@ export class ObjProp implements Expr {
     public span: SrcSpan
   ) {}
 
-  static is(expr: Expr): expr is ObjProp {
+  static is(expr: Expr): expr is ObjectProp {
     return expr.kind === ExprKind.Property;
   }
 }
@@ -223,7 +229,7 @@ export class ObjProp implements Expr {
 export class ExprObject implements Expr {
   readonly kind = ExprKind.Object;
   constructor(
-    public props: ObjProp[],
+    public props: ObjectProp[],
     public span: SrcSpan
   ) {}
 
@@ -305,34 +311,34 @@ export class ExprForLoop implements Expr {
   }
 }
 
-export function getOpPrecedence(op: OpBin): number {
+export function getOpPrecedence(op: BinOp): number {
   switch (op) {
-    case OpBin.Or:
+    case BinOp.Or:
       return 1;
 
-    case OpBin.And:
+    case BinOp.And:
       return 2;
 
-    case OpBin.Eq:
-    case OpBin.NotEq:
+    case BinOp.Eq:
+    case BinOp.NotEq:
       return 3;
 
-    case OpBin.Lt:
-    case OpBin.LtEq:
-    case OpBin.Gt:
-    case OpBin.GtEq:
+    case BinOp.Lt:
+    case BinOp.LtEq:
+    case BinOp.Gt:
+    case BinOp.GtEq:
       return 4;
 
-    case OpBin.Add:
-    case OpBin.Sub:
+    case BinOp.Add:
+    case BinOp.Sub:
       return 5;
 
-    case OpBin.Mul:
-    case OpBin.Div:
-    case OpBin.Rem:
+    case BinOp.Mul:
+    case BinOp.Div:
+    case BinOp.Rem:
       return 6;
 
-    case OpBin.Exp:
+    case BinOp.Exp:
       return 7;
   }
 }

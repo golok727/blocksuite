@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  ExprBin,
+  BinOp,
+  ExprBinary,
   ExprLit,
   ExprLocalAssignment,
+  ExprNegateNumber,
   Ident,
-  OpBin,
   StmtExpr,
   StmtLocal,
 } from '../../database-block/formula/ast/index.js';
@@ -98,15 +99,15 @@ describe('Parser', () => {
     const res = parser.parse().formula.body;
     const expected = [
       new StmtExpr(
-        new ExprBin(
+        new ExprBinary(
           new ExprLit(2, new SrcSpan(0, 1)),
-          OpBin.Add,
-          new ExprBin(
+          BinOp.Add,
+          new ExprBinary(
             new ExprLit(4, new SrcSpan(4, 5)),
-            OpBin.Mul,
-            new ExprBin(
+            BinOp.Mul,
+            new ExprBinary(
               new ExprLit(2, new SrcSpan(8, 9)),
-              OpBin.Exp,
+              BinOp.Exp,
               new ExprLit(10, new SrcSpan(13, 15)),
               new SrcSpan(8, 15)
             ),
@@ -127,9 +128,9 @@ describe('Parser', () => {
 
     const expected = [
       new StmtExpr(
-        new ExprBin(
+        new ExprBinary(
           new ExprLit(2, new SrcSpan(0, 1)),
-          OpBin.Add,
+          BinOp.Add,
           new Ident('value', new SrcSpan(4, 9)),
           new SrcSpan(0, 9)
         ),
@@ -147,14 +148,14 @@ describe('Parser', () => {
 
     const expected = [
       new StmtExpr(
-        new ExprBin(
-          new ExprBin(
+        new ExprBinary(
+          new ExprBinary(
             new ExprLit('Hello', new SrcSpan(0, 7)),
-            OpBin.Add,
+            BinOp.Add,
             new Ident('world', new SrcSpan(10, 15)),
             new SrcSpan(0, 15)
           ),
-          OpBin.Add,
+          BinOp.Add,
           new ExprLit(3, new SrcSpan(18, 19)),
           new SrcSpan(0, 19)
         ),
@@ -163,5 +164,35 @@ describe('Parser', () => {
     ];
 
     expect(res).toEqual(expected);
+  });
+
+  test('group 1', () => {
+    const src = '(-1 + 2 + 3) + 2';
+    const parsed = Parser.parse(src).formula.body;
+    const expected = [
+      new StmtExpr(
+        new ExprBinary(
+          new ExprBinary(
+            new ExprBinary(
+              new ExprNegateNumber(
+                new ExprLit(1, new SrcSpan(2, 3)),
+                new SrcSpan(1, 3)
+              ),
+              BinOp.Add,
+              new ExprLit(2, new SrcSpan(6, 7)),
+              new SrcSpan(1, 7)
+            ),
+            BinOp.Add,
+            new ExprLit(3, new SrcSpan(10, 11)),
+            new SrcSpan(1, 11)
+          ),
+          BinOp.Add,
+          new ExprLit(2, new SrcSpan(15, 16)),
+          new SrcSpan(1, src.length)
+        ),
+        new SrcSpan(1, src.length)
+      ),
+    ];
+    expect(parsed).toEqual(expected);
   });
 });

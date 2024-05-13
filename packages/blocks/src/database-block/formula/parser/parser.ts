@@ -4,7 +4,7 @@ import { type Spannable } from '../span.js';
 import type { LiteralToken } from '../token.js';
 import type { Token } from '../token.js';
 import { TokenKind } from '../token.js';
-import type { Lexer } from './lexer.js';
+import { Lexer } from './lexer.js';
 
 const Skip = Symbol('skip_token');
 type SkipToken = typeof Skip;
@@ -27,6 +27,14 @@ export class Parser {
     this.tok1 = this.lex.advance();
   }
 
+  static parse(source: string) {
+    return new Parser(new Lexer(source)).parse();
+  }
+
+  static safeParse(source: string) {
+    return new Parser(new Lexer(source)).safeParse();
+  }
+
   isEof() {
     return this.tok0.kind === TokenKind.Eof;
   }
@@ -35,6 +43,23 @@ export class Parser {
     return {
       formula: this.parseFormula(),
     };
+  }
+
+  safeParse() {
+    try {
+      const parsed = this.parse();
+      return {
+        success: true,
+        parsed,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        parsed: null,
+        error,
+      };
+    }
   }
 
   private parseFormula(): Ast.Formula {
@@ -101,7 +126,7 @@ export class Parser {
 
     const assignmentSpan = ident.span.clone();
 
-    if (this.eatIf(TokenKind.Eq)) {
+    if (this.eatOne(TokenKind.Eq)) {
       const expr = this.parseExpr();
 
       if (!expr) throw new Error('Expected an expr after = '); // todo better error
@@ -199,9 +224,41 @@ export class Parser {
       case TokenKind.Bool:
         this.nextToken();
         return new Ast.ExprLit((tok as LiteralToken).data, tok.span);
+
+      // Bool negation
+      case TokenKind.Bang: {
+        const bang = this.nextToken();
+
+        const value = this.parseExprUnit();
+        if (!value) throw new Error('expected an expression after !'); // todo errors
+        return new Ast.ExprNegateBool(value, bang.span.merge(value.span));
+      }
+
+      // Number negation
+      case TokenKind.Minus: {
+        const minus = this.nextToken();
+        const value = this.parseExprUnit();
+        if (!value) throw new Error('expected an expression after -'); // todo errors
+        return new Ast.ExprNegateNumber(value, minus.span.merge(value.span));
+      }
+
       case TokenKind.Name:
         this.nextToken();
         return new Ast.Ident((tok as LiteralToken<string>).data, tok.span);
+
+      // grouping
+      case TokenKind.LeftParen: {
+        this.nextToken(); // (
+        const expr = this.parseExpr();
+        if (!expr) {
+          throw new Error('Expected an expression after ('); // todo error
+        }
+        if (!this.eatOne(TokenKind.RightParen)) {
+          throw new Error('Expected a ) after expression'); // todo error
+        }
+        return expr;
+      }
+
       default: {
         return null;
       }
@@ -223,7 +280,7 @@ export class Parser {
     if (!op) throw new Error(`@@internal Unexpected op ${opTok.kind}`);
 
     const span = left.span.merge(opTok.span).merge(right.span);
-    return new Ast.ExprBin(left, op, right, span);
+    return new Ast.ExprBinary(left, op, right, span);
   }
 
   // ----- End Expr
@@ -234,43 +291,43 @@ export class Parser {
     return Ast.getOpPrecedence(op);
   }
 
-  private tokenToOp(t: TokenKind): Ast.OpBin | null {
+  private tokenToOp(t: TokenKind): Ast.BinOp | null {
     switch (t) {
       // logical
       case TokenKind.And:
-        return Ast.OpBin.And;
+        return Ast.BinOp.And;
       case TokenKind.Or:
-        return Ast.OpBin.Or;
+        return Ast.BinOp.Or;
 
       // equality
       case TokenKind.NotEq:
-        return Ast.OpBin.NotEq;
+        return Ast.BinOp.NotEq;
       case TokenKind.EqEq:
-        return Ast.OpBin.Eq;
+        return Ast.BinOp.Eq;
 
       // math
       case TokenKind.Plus:
-        return Ast.OpBin.Add;
+        return Ast.BinOp.Add;
       case TokenKind.Minus:
-        return Ast.OpBin.Sub;
+        return Ast.BinOp.Sub;
       case TokenKind.Star:
-        return Ast.OpBin.Mul;
+        return Ast.BinOp.Mul;
       case TokenKind.Slash:
-        return Ast.OpBin.Div;
+        return Ast.BinOp.Div;
       case TokenKind.StarStar:
-        return Ast.OpBin.Exp;
+        return Ast.BinOp.Exp;
       case TokenKind.Percent:
-        return Ast.OpBin.Rem;
+        return Ast.BinOp.Rem;
 
       //
       case TokenKind.GtEq:
-        return Ast.OpBin.GtEq;
+        return Ast.BinOp.GtEq;
       case TokenKind.LtEq:
-        return Ast.OpBin.LtEq;
+        return Ast.BinOp.LtEq;
       case TokenKind.Gt:
-        return Ast.OpBin.Gt;
+        return Ast.BinOp.Gt;
       case TokenKind.Lt:
-        return Ast.OpBin.Lt;
+        return Ast.BinOp.Lt;
 
       default:
         return null;
@@ -301,7 +358,7 @@ export class Parser {
     return tok;
   }
 
-  private eatIf(kind: TokenKind) {
+  private eatOne(kind: TokenKind) {
     const tok = this.tok0;
     if (tok.kind === kind) {
       return this.nextToken();
@@ -336,9 +393,9 @@ export class Parser {
       end = parsed.span;
 
       if (delim !== undefined) {
-        if (!this.eatIf(delim)) break;
+        if (!this.eatOne(delim)) break;
         // check if the delim is repeated  // [1 ,,]
-        if (this.eatIf(delim)) throw new Error('Extra separator'); // todo use parse error
+        if (this.eatOne(delim)) throw new Error('Extra separator'); // todo use parse error
       }
     }
 
