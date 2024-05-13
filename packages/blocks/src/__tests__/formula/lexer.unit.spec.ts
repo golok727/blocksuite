@@ -255,3 +255,6 @@ Code\\\`\`
     expect([...lexer].map(t => t.kind)).toEqual(expected);
   });
 });
+
+// todo lexer
+// 1..10+2

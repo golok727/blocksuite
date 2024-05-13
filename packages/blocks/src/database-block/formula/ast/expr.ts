@@ -1,7 +1,6 @@
-import type { Block } from '@blocksuite/store';
-
 import type { SrcSpan } from '../span.js';
 import { type Spannable } from '../span.js';
+import type { Stmt } from './stmt.js';
 
 // Todo patterns
 export enum ExprKind {
@@ -9,6 +8,8 @@ export enum ExprKind {
   TemplateLiteral,
 
   Ident,
+
+  Block,
 
   Array,
   Object,
@@ -18,13 +19,13 @@ export enum ExprKind {
   NegateNumber, // -1 , -1.2
   Binary,
 
-  Assignment,
+  Assignment, // a = b, c = b
 
-  LocalAssignment,
+  LocalAssignment, // let a = 10, b = 7
 
-  Call,
-  MemberExpression,
-  Range,
+  Call, // foo() , foo.bar()
+  MemberExpression, // foo.hello()
+  Range, // 1..9, 1.=9
   ArrowFn,
   Fn,
 
@@ -45,7 +46,7 @@ export enum BinOp {
   Add = '+',
   Mul = '*',
   Div = '/',
-  Sub = '',
+  Sub = '-',
   Exp = '**',
   Rem = '%',
 
@@ -81,6 +82,19 @@ export class ExprTemplateLit implements Expr {
 
   static is(expr: Expr): expr is ExprTemplateLit {
     return expr.kind === ExprKind.TemplateLiteral;
+  }
+}
+
+export class Block implements Expr {
+  readonly kind = ExprKind.Block;
+
+  constructor(
+    public stmts: Stmt[],
+    public span: SrcSpan
+  ) {}
+
+  static is(expr: Expr): expr is Block {
+    return expr.kind === ExprKind.Block;
   }
 }
 
@@ -190,8 +204,9 @@ export class ExprMember implements Expr {
 export class ExprRange implements Expr {
   readonly kind = ExprKind.Range;
   constructor(
-    public start: number,
-    public end: number,
+    public from: Expr,
+    public to: Expr,
+    public include: boolean, // whether to include the 'to' value
     public span: SrcSpan
   ) {}
 
@@ -257,7 +272,7 @@ export class ExprArrowFn implements Expr {
 
   constructor(
     public params: Expr[],
-    public expression: boolean,
+    public expression: boolean, // body will be a expr
     public body: Expr | Block,
     public span: SrcSpan
   ) {}

@@ -6,8 +6,9 @@ import type { Token } from '../token.js';
 import { TokenKind } from '../token.js';
 import { Lexer } from './lexer.js';
 
-const Skip = Symbol('skip_token');
-type SkipToken = typeof Skip;
+/// - We don't care about new lines
+const Continue = Symbol('@continue');
+type Continue = typeof Continue;
 
 export interface Parsed {
   formula: Ast.Formula;
@@ -84,23 +85,25 @@ export class Parser {
       case TokenKind.Eof:
         return null;
 
-      case TokenKind.Let:
-        return this.parseLocal();
+      case TokenKind.Let: {
+        const ret = this.parseLocal();
+        return ret;
+      }
 
-      case TokenKind.Fn:
-        return Skip;
+      case TokenKind.NewLine: {
+        this.nextToken();
+        return Continue;
+      }
 
       default: {
         const expr = this.parseExpr();
-        if (expr) {
-          return new Ast.StmtExpr(expr, expr.span);
-        }
-        return Skip;
+        if (!expr) return null;
+        return new Ast.StmtExpr(expr, expr.span);
       }
     }
   };
 
-  // without let or const consumed
+  // with let
   private parseLocal() {
     const letTok = this.nextToken(); // eat let or const
 
@@ -147,13 +150,43 @@ export class Parser {
     }
   };
 
-  // ---- Begin Expr
+  // expr(start) .. expr (end)              ===(start to < end)
+  // expr(start) .= expr (end)              === (start to <= end)
+  private parseRange(from: Ast.Expr) {
+    const rangeDotSyntaxToken = this.nextToken();
+    const include = rangeDotSyntaxToken.kind === TokenKind.DotEq; // eat ..
+
+    const to = this.parseExpr();
+    if (!to) throw new Error('required an expression after .. or ..='); // todo error
+
+    return new Ast.ExprRange(from, to, include, from.span.merge(to.span));
+  }
+
+  private parseTernary(condition: Ast.Expr): Ast.Expr | null {
+    if (!this.eatOne(TokenKind.Question)) {
+      return null; // not a ternary
+    }
+    const consequent = this.parseExpr();
+    if (!consequent) throw new Error('Expected expression after "?"'); // todo error
+
+    if (!this.eatOne(TokenKind.Colon))
+      throw new Error('Expected a colon after expression'); // todo error
+
+    const alternate = this.parseExpr();
+    if (!alternate) throw new Error('Expected a expression after ":"');
+    const span = condition.span.merge(alternate.span);
+    return new Ast.ExprIf(condition, consequent, alternate, span);
+  }
+
+  // ---- Begin Expr Main
   private parseExpr(): Ast.Expr | null {
     const exprStack: Ast.Expr[] = [];
     const opStack: [tok: Token, precedence: number][] = [];
     opStack;
 
     for (;;) {
+      if (this.tok0.kind === TokenKind.Semi) break;
+
       // get expr
       const uniExpr = this.parseExprUnit();
       if (uniExpr) {
@@ -173,10 +206,41 @@ export class Parser {
           exprStack,
           this.reduceOpExpr
         );
-      } else break; // not an op
+      } else {
+        break;
+      } // not an op
     }
 
-    return this.handleOperator(null, opStack, exprStack, this.reduceOpExpr);
+    const expr = this.handleOperator(
+      null,
+      opStack,
+      exprStack,
+      this.reduceOpExpr
+    );
+
+    if (expr) {
+      switch (this.tok0.kind) {
+        case TokenKind.Question:
+          return this.parseTernary(expr);
+        case TokenKind.DotDot:
+        case TokenKind.DotEq:
+          return this.parseRange(expr);
+      }
+    }
+
+    return expr;
+  }
+
+  // with brace
+  private parseBlock() {
+    const lBrace = this.nextToken();
+    const [stmts] = this.parseStatementSequence();
+
+    const rBrace = this.eatOne(TokenKind.RightBrace); // todo make a expect one
+
+    if (!rBrace) throw new Error('Expected a "}"'); // todo errors
+
+    return new Ast.Block(stmts, lBrace.span.merge(rBrace.span));
   }
 
   private handleOperator(
@@ -251,12 +315,18 @@ export class Parser {
         this.nextToken(); // (
         const expr = this.parseExpr();
         if (!expr) {
-          throw new Error('Expected an expression after ('); // todo error
+          throw new Error('Expected an expression after "("'); // todo error
         }
+
         if (!this.eatOne(TokenKind.RightParen)) {
-          throw new Error('Expected a ) after expression'); // todo error
+          throw new Error('Expected a ")" after expression'); // todo error
         }
+
         return expr;
+      }
+
+      case TokenKind.LeftBrace: {
+        return this.parseBlock();
       }
 
       default: {
@@ -345,6 +415,8 @@ export class Parser {
       switch (nxt.kind) {
         case TokenKind.Comment:
           break;
+        case TokenKind.NewLine:
+          break;
         default:
           allow = false;
       }
@@ -379,8 +451,8 @@ export class Parser {
     let end = this.tok0.span;
     for (;;) {
       const parsed = parse();
-      if (parsed === Skip) {
-        this.nextToken();
+
+      if (parsed === Continue) {
         continue;
       }
 
@@ -403,4 +475,4 @@ export class Parser {
   }
 }
 
-type SeriesParseFn<R extends Spannable> = () => R | null | SkipToken;
+type SeriesParseFn<R extends Spannable> = () => R | null | Continue;

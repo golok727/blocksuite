@@ -2,7 +2,6 @@ import type { Spannable, SrcSpan } from '../span.js';
 import type { Expr, ExprLocalAssignment } from './expr.js';
 
 export enum StmtKind {
-  Block,
   Local,
   Expr,
 }
@@ -17,18 +16,6 @@ export class StmtExpr implements Stmt {
     public expr: Expr,
     public span: SrcSpan
   ) {}
-}
-export class Block implements Stmt {
-  readonly kind = StmtKind.Block;
-
-  constructor(
-    public stmts: Stmt[],
-    public span: SrcSpan
-  ) {}
-
-  static is(stmt: Stmt): stmt is Block {
-    return stmt.kind === StmtKind.Block;
-  }
 }
 
 export class StmtLocal implements Stmt {

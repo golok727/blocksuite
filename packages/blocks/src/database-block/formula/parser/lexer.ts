@@ -319,8 +319,7 @@ export class Lexer {
     const pointOrExponent = this.peekNext();
     const isPoint = pointOrExponent === '.';
     const isExponent = pointOrExponent === 'e' || pointOrExponent === 'E';
-
-    if (isPoint || isExponent) {
+    if ((!this.isRangeSyntax() && isPoint) || isExponent) {
       // 0. , 1., ... or 1e or 1e- or 1e+
       isFloat = true;
       stringContent += this.nextChar(); // eat . | e | E
@@ -482,6 +481,11 @@ export class Lexer {
       );
 
     return this.createToken(tokenKind);
+  }
+
+  private isRangeSyntax() {
+    const tok = this.peekNext() + this.peekNext2();
+    return tok === '..' || tok === '.=';
   }
 
   private isNumberStart(c: string) {

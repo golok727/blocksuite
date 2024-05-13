@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
   BinOp,
   ExprBinary,
+  ExprKind,
   ExprLit,
   ExprLocalAssignment,
   ExprNegateNumber,
@@ -194,5 +195,35 @@ describe('Parser', () => {
       ),
     ];
     expect(parsed).toEqual(expected);
+  });
+
+  test('ternary', () => {
+    const src = `hello == "world" ? world == "hello" ? "HelloWorld" :  1 : 122`;
+    const parsed = Parser.parse(src).formula.body;
+    // todo check
+    // console.log(parsed);
+    expect((parsed[0] as StmtExpr).expr.kind).toBe(ExprKind.If);
+  });
+
+  test('range', () => {
+    const src = '1+1.=10+2';
+    const parsed = Parser.parse(src).formula.body;
+    // todo
+    expect((parsed[0] as StmtExpr).expr.kind).toBe(ExprKind.Range);
+  });
+
+  test('block', () => {
+    const src = `
+      let a = 10
+      { 
+        let a = "Hello"
+        let thing = "thing"
+      }
+      let world = "hello"
+     
+    `;
+    const parsed = Parser.parse(src).formula.body;
+    console.log(parsed);
+    expect(parsed.length).toBe(3);
   });
 });
