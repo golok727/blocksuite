@@ -24,7 +24,6 @@ export enum ExprKind {
   Call, // foo() , foo.bar()
   MemberExpression, // foo.hello()
   Range, // 1..9, 1.=9
-  ArrowFn,
   Fn,
 
   If,
@@ -238,13 +237,13 @@ export class ExprObject implements Expr {
   }
 }
 
+// () -> {}
 export class ExprFn implements Expr {
   readonly kind = ExprKind.Fn;
 
   constructor(
-    public name: Ident,
-    public params: Expr[],
-    public body: Block,
+    public params: Ident[],
+    public body: Block | Expr,
     public span: SrcSpan
   ) {}
 
@@ -252,20 +251,20 @@ export class ExprFn implements Expr {
     return stmt.kind === ExprKind.Fn;
   }
 }
-export class ExprArrowFn implements Expr {
-  readonly kind = ExprKind.ArrowFn;
+// export class ExprArrowFn implements Expr {
+//   readonly kind = ExprKind.ArrowFn;
 
-  constructor(
-    public params: Expr[],
-    public expression: boolean, // body will be a expr else body will be a block
-    public body: Expr | Block,
-    public span: SrcSpan
-  ) {}
+//   constructor(
+//     public params: Expr[],
+//     public expression: boolean, // body will be a expr else body will be a block
+//     public body: Expr | Block,
+//     public span: SrcSpan
+//   ) {}
 
-  static is(expr: Expr): expr is ExprArrowFn {
-    return expr.kind === ExprKind.ArrowFn;
-  }
-}
+//   static is(expr: Expr): expr is ExprArrowFn {
+//     return expr.kind === ExprKind.ArrowFn;
+//   }
+// }
 
 export class ExprIf implements Expr {
   readonly kind = ExprKind.If;

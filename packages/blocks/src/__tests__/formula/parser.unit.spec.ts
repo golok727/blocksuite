@@ -229,4 +229,33 @@ describe('Parser', () => {
     const parsed = Parser.parse(src).formula.body;
     expect(parsed.length).toBe(3);
   });
+
+  test('function statement', () => {
+    const src = `
+    let a = 10
+    fn add(a) {
+      a + b
+    }
+
+    fn make_counter() {
+       () -> {
+
+      }
+    }
+
+    `;
+
+    const parsed = Parser.parse(src).formula.body;
+    expect(parsed.length).toBe(3);
+  });
+
+  test('another', () => {
+    const src = `
+    {
+
+    }
+    `;
+    const parsed = Parser.parse(src).formula.body;
+    console.log(parsed);
+  });
 });

@@ -7,12 +7,12 @@ export enum TokenKind {
   String = 'lit:String',
   Bool = 'lit:Bool',
 
-  LeftParen = 'sym:LeftParen', // (
-  RightParen = 'sym:RightParen', // )
-  LeftBracket = 'sym:LeftSquare', // [
-  RightBracket = 'sym:RightSquare', // ]
-  LeftBrace = 'sym:LeftBrace', // {
-  RightBrace = 'sym:RightBrace', // }
+  LParen = 'sym:LParen', // (
+  RParen = 'sym:RParen', // )
+  LBracket = 'sym:LBracket', // [
+  RBracket = 'sym:RBracket', // ]
+  LCurly = 'sym:LCurly', // {
+  RCurly = 'sym:RCurly', // }
 
   Plus = 'sym:Plus',
   Minus = 'sym:Minus',
@@ -43,7 +43,7 @@ export enum TokenKind {
   GtGt = 'sym:GtGt', // '>>'
 
   ThinArrow = 'sym:ThinArrow', // '->'
-  FatArrow = 'sym:FatArrow',
+  FatArrow = 'sym:FatArrow', // =>
 
   Dot = 'sym:Dot', // '.'
   DotEq = 'sym:DotEq', // '.='
@@ -151,12 +151,12 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   '&': TokenKind.BitwiseAnd,
   '|': TokenKind.BitwiseOr,
 
-  '(': TokenKind.LeftParen,
-  ')': TokenKind.RightParen,
-  '[': TokenKind.LeftBracket,
-  ']': TokenKind.RightBracket,
-  '{': TokenKind.LeftBrace,
-  '}': TokenKind.RightBrace,
+  '(': TokenKind.LParen,
+  ')': TokenKind.RParen,
+  '[': TokenKind.LBracket,
+  ']': TokenKind.RBracket,
+  '{': TokenKind.LCurly,
+  '}': TokenKind.RCurly,
 
   '+': TokenKind.Plus,
   '-': TokenKind.Minus,
@@ -177,7 +177,7 @@ export const SymbolToTokenKindMap: Record<string, TokenKind> = {
   ';': TokenKind.Semi,
 
   '->': TokenKind.ThinArrow,
-  '=>': TokenKind.ThinArrow,
+  '=>': TokenKind.FatArrow,
 
   '.': TokenKind.Dot,
   '.=': TokenKind.DotEq,

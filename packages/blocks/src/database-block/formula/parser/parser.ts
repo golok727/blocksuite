@@ -90,8 +90,9 @@ export class Parser {
         return ret;
       }
 
-      case TokenKind.LeftBrace: {
-        return this.parseBlock();
+      case TokenKind.Fn: {
+        const fn = this.nextToken();
+        return this.parseFunction(fn.span) as Ast.StmtFn;
       }
 
       case TokenKind.NewLine: {
@@ -99,9 +100,18 @@ export class Parser {
         return Continue;
       }
 
+      case TokenKind.LCurly: {
+        console.log(this.tok0.kind);
+        const block = this.parseBlock();
+        console.log(this.tok0.kind);
+        return block;
+      }
+
       default: {
         const expr = this.parseExpr();
-        if (!expr) return null;
+        if (!expr) {
+          return null;
+        }
         return new Ast.StmtExpr(expr, expr.span.clone());
       }
     }
@@ -182,8 +192,55 @@ export class Parser {
     return new Ast.ExprIf(condition, consequent, alternate, span);
   }
 
+  // with brace
+  private parseBlock() {
+    const lBrace = this.expectOne(TokenKind.LCurly, 'Expected a left brace'); // todo debug
+    const [stmts] = this.parseStatementSequence();
+
+    const rBrace = this.expectOne(TokenKind.RCurly, 'Expected a "}"'); // todo errors
+
+    return new Ast.Block(stmts, lBrace.span.merge(rBrace.span));
+  }
+
+  private parseName = () => {
+    const name = this.eatOne(TokenKind.Name) as LiteralToken<string>;
+    if (!name) return null;
+    return new Ast.Ident(name.data, name.span);
+  };
+
+  private expectName = (): Ast.Ident => {
+    const name = this.eatOne(TokenKind.Name) as LiteralToken<string>;
+    if (!name) throw new Error('Expected a name');
+    return new Ast.Ident(name.data, name.span);
+  };
+
+  private expectOne(kind: TokenKind, message: string) {
+    const t = this.eatOne(kind);
+    if (!t) throw new Error(message);
+    return t;
+  }
+
+  private parseFunction(start: SrcSpan) {
+    const name = this.expectName();
+
+    const [params] = this.parseFunctionParams();
+
+    const body = this.parseBlock();
+
+    const span = start.merge(body.span);
+
+    return new Ast.StmtFn(name, params, body, span);
+  }
+
+  private parseFunctionParams() {
+    this.expectOne(TokenKind.LParen, 'Expected a "("');
+    const params = this.series(this.parseName, TokenKind.Comma);
+    this.expectOne(TokenKind.RParen, 'Expected a ")"');
+    return params;
+  }
+
   // ---- Begin Expr Main
-  private parseExpr(): Ast.Expr | null {
+  private parseExpr = (): Ast.Expr | null => {
     const exprStack: Ast.Expr[] = [];
     const opStack: [tok: Token, precedence: number][] = [];
     opStack;
@@ -233,20 +290,103 @@ export class Parser {
     }
 
     return expr;
+  };
+
+  private parseExprSequence() {
+    return this.series<Ast.Expr>(this.parseExpr, TokenKind.Comma);
   }
 
-  // with brace
-  private parseBlock() {
-    const lBrace = this.nextToken();
-    if (lBrace.kind !== TokenKind.LeftBrace)
-      throw new Error('Expected a left brace'); // todo debug
-    const [stmts] = this.parseStatementSequence();
+  private parseExprUnit(): Ast.Expr | null {
+    const tok = this.tok0;
+    switch (tok.kind) {
+      case TokenKind.String:
+      case TokenKind.Number:
+      case TokenKind.Bool:
+        this.nextToken();
+        return new Ast.ExprLit((tok as LiteralToken).data, tok.span);
 
-    const rBrace = this.eatOne(TokenKind.RightBrace); // todo make a expect one
+      // Bool negation
+      case TokenKind.Bang: {
+        const bang = this.nextToken();
 
-    if (!rBrace) throw new Error('Expected a "}"'); // todo errors
+        const value = this.parseExprUnit();
+        if (!value) throw new Error('expected an expression after !'); // todo errors
+        return new Ast.ExprNegateBool(value, bang.span.merge(value.span));
+      }
+      // Number negation
+      case TokenKind.Minus: {
+        const minus = this.nextToken();
+        const value = this.parseExprUnit();
+        if (!value) throw new Error('expected an expression after -'); // todo errors
+        return new Ast.ExprNegateNumber(value, minus.span.merge(value.span));
+      }
 
-    return new Ast.Block(stmts, lBrace.span.merge(rBrace.span));
+      case TokenKind.Name:
+        this.nextToken();
+        return new Ast.Ident((tok as LiteralToken<string>).data, tok.span);
+
+      // grouping (
+      case TokenKind.LParen: {
+        const lParen = this.nextToken();
+        const [expressions] = this.parseExprSequence();
+        const len = expressions.length;
+
+        this.expectOne(TokenKind.RParen, 'Expected a ")" after expression'); // todo error
+
+        const allIdent = expressions.every(
+          expr => expr.kind === Ast.ExprKind.Ident // todo pattern
+        );
+        const maybeArrow = this.tok0.kind === TokenKind.ThinArrow;
+
+        // if anonymous fn
+        if (allIdent && maybeArrow) {
+          this.nextToken();
+          const body =
+            this.tok0.kind === TokenKind.LCurly
+              ? this.parseBlock()
+              : this.parseExpr();
+          if (!body)
+            throw new Error('Expected a expression or a block after ->'); // todo error
+          return new Ast.ExprFn(
+            expressions as Ast.Ident[],
+            body,
+            lParen.span.merge(body.span)
+          );
+        }
+
+        if (len === 0) throw new Error('Expected an expression after "("'); // todo error
+        if (len > 1) throw new Error('Sequences are not allowed');
+        return expressions[0];
+      }
+
+      /*
+        match (cond) {
+          case1 => this, 
+          case2 => {
+            blah + blah
+            blah
+          }
+        }
+      */
+      case TokenKind.Match: {
+        throw new Error('Match cases are under construction');
+      }
+
+      // { this will be for maps
+      case TokenKind.LCurly: {
+        // todo
+        throw new Error('Objects are under construction');
+      }
+
+      case TokenKind.LBracket: {
+        // todo
+        throw new Error('Lists are under construction');
+      }
+
+      default: {
+        return null;
+      }
+    }
   }
 
   private handleOperator(
@@ -284,93 +424,6 @@ export class Parser {
       } else break;
     }
     return null;
-  }
-
-  private parseExprUnit(): Ast.Expr | null {
-    const tok = this.tok0;
-    switch (tok.kind) {
-      case TokenKind.String:
-      case TokenKind.Number:
-      case TokenKind.Bool:
-        this.nextToken();
-        return new Ast.ExprLit((tok as LiteralToken).data, tok.span);
-
-      // Bool negation
-      case TokenKind.Bang: {
-        const bang = this.nextToken();
-
-        const value = this.parseExprUnit();
-        if (!value) throw new Error('expected an expression after !'); // todo errors
-        return new Ast.ExprNegateBool(value, bang.span.merge(value.span));
-      }
-
-      // Number negation
-      case TokenKind.Minus: {
-        const minus = this.nextToken();
-        const value = this.parseExprUnit();
-        if (!value) throw new Error('expected an expression after -'); // todo errors
-        return new Ast.ExprNegateNumber(value, minus.span.merge(value.span));
-      }
-
-      case TokenKind.Name:
-        this.nextToken();
-        return new Ast.Ident((tok as LiteralToken<string>).data, tok.span);
-
-      // grouping (
-      case TokenKind.LeftParen: {
-        this.nextToken(); // (
-        const expr = this.parseExpr();
-        if (!expr) {
-          throw new Error('Expected an expression after "("'); // todo error
-        }
-
-        if (!this.eatOne(TokenKind.RightParen)) {
-          throw new Error('Expected a ")" after expression'); // todo error
-        }
-        // todo check for arrow function
-        return expr;
-      }
-      /*
-        fn name() {
-
-        }
-
-        fn() {
-        } // anonymous
-        
-       */
-      case TokenKind.Fn: {
-        throw new Error('Functions are under construction');
-      }
-
-      /*
-        match (cond) {
-          case1 => this, 
-          case2 => {
-            blah + blah
-            blah
-          }
-        }
-      */
-      case TokenKind.Match: {
-        throw new Error('Match cases are under construction');
-      }
-
-      // { this will be for maps
-      case TokenKind.LeftBrace: {
-        // todo
-        throw new Error('Objects are under construction');
-      }
-
-      case TokenKind.LeftBracket: {
-        // todo
-        throw new Error('Lists are under construction');
-      }
-
-      default: {
-        return null;
-      }
-    }
   }
 
   private reduceOpExpr = (op: Token, exprStack: Ast.Expr[]) => {
@@ -469,8 +522,7 @@ export class Parser {
   }
 
   private eatOne(kind: TokenKind) {
-    const tok = this.tok0;
-    if (tok.kind === kind) {
+    if (this.tok0.kind === kind) {
       return this.nextToken();
     }
 
