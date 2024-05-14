@@ -91,8 +91,7 @@ export class Parser {
       }
 
       case TokenKind.LeftBrace: {
-        const block = this.parseBlock();
-        return new Ast.StmtExpr(block, block.span.clone());
+        return this.parseBlock();
       }
 
       case TokenKind.NewLine: {

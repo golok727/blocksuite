@@ -1,6 +1,6 @@
 import type { SrcSpan } from '../span.js';
 import { type Spannable } from '../span.js';
-import type { Stmt } from './stmt.js';
+import type { Block } from './stmt.js';
 
 // Todo patterns
 export enum ExprKind {
@@ -8,8 +8,6 @@ export enum ExprKind {
   TemplateLiteral,
 
   Ident,
-
-  Block,
 
   Array,
   Object,
@@ -82,19 +80,6 @@ export class ExprTemplateLit implements Expr {
 
   static is(expr: Expr): expr is ExprTemplateLit {
     return expr.kind === ExprKind.TemplateLiteral;
-  }
-}
-
-export class Block implements Expr {
-  readonly kind = ExprKind.Block;
-
-  constructor(
-    public stmts: Stmt[],
-    public span: SrcSpan
-  ) {}
-
-  static is(expr: Expr): expr is Block {
-    return expr.kind === ExprKind.Block;
   }
 }
 
@@ -272,7 +257,7 @@ export class ExprArrowFn implements Expr {
 
   constructor(
     public params: Expr[],
-    public expression: boolean, // body will be a expr
+    public expression: boolean, // body will be a expr else body will be a block
     public body: Expr | Block,
     public span: SrcSpan
   ) {}
