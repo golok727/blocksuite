@@ -11,7 +11,7 @@ import {
 } from '../../_common/icons/index.js';
 import type { CodeBlockComponent } from '../code-block.js';
 
-export function CodeOptionTemplate({
+export function CodeActionTemplate({
   ref: containerRef,
   model,
   wrap,
@@ -32,20 +32,6 @@ export function CodeOptionTemplate({
     <style>
       :host {
         z-index: 1;
-      }
-      .affine-codeblock-option {
-        box-shadow: var(--affine-shadow-2);
-        padding: 8px;
-        border-radius: 8px;
-        z-index: var(--affine-z-index-popover);
-        background: var(--affine-background-overlay-panel-color);
-      }
-      .delete-code-button:hover {
-        background: var(--affine-background-error-color);
-        color: var(--affine-error-color);
-      }
-      .delete-code-button:hover > svg {
-        color: var(--affine-error-color);
       }
     </style>
 

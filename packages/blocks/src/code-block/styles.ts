@@ -26,21 +26,42 @@ export const codeBlockStyles = css`
     position: absolute;
     font-size: var(--affine-font-sm);
     line-height: var(--affine-line-height);
-    top: 12px;
-    left: 12px;
+    top: 5px;
+    left: 5px;
   }
 
-  .affine-code-block-container > .lang-list-wrapper {
+  .affine-code-block-container .code-actions-wrapper {
+    display: flex;
+    gap: 5px;
+    position: absolute;
+    font-size: var(--affine-font-sm);
+    line-height: var(--affine-line-height);
+    top: 5px;
+    right: 5px;
+  }
+
+  .affine-code-block-container > .lang-list-wrapper,
+  .affine-code-block-container > .code-actions-wrapper {
     visibility: hidden;
   }
-  .affine-code-block-container:hover > .lang-list-wrapper {
+
+  .affine-code-block-container:hover > .lang-list-wrapper,
+  .affine-code-block-container:hover > .code-actions-wrapper {
     visibility: visible;
   }
 
-  .affine-code-block-container > .lang-list-wrapper > .lang-button {
+  .code-block-button {
+    background-color: var(--affine-background-primary-color);
+    padding: 8px;
+    box-shadow: var(--affine-shadow-1);
+  }
+  .code-block-button:hover {
+    background-color: var(--affine-hover-color);
+  }
+
+  .code-block-button.lang-button {
     display: flex;
     justify-content: flex-start;
-    padding: 0 8px;
   }
 
   .affine-code-block-container rich-text {
