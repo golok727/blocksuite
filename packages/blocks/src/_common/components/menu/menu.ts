@@ -21,13 +21,13 @@ import { createRef, ref } from 'lit/directives/ref.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { ArrowRightSmallIcon } from '../../../../_common/icons/index.js';
-import { rangeWrap } from '../../../../_common/utils/math.js';
 import {
   checkboxChecked,
   checkboxUnchecked,
-} from '../../../../list-block/utils/icons.js';
-import { DoneIcon } from '../../common/icons/index.js';
+} from '../../../list-block/utils/icons.js';
+import { DoneIcon } from '../../icons/index.js';
+import { ArrowRightSmallIcon } from '../../icons/index.js';
+import { rangeWrap } from '../../utils/math.js';
 
 type MenuCommon = {
   hide?: () => boolean;
@@ -673,6 +673,7 @@ declare global {
     'affine-menu': MenuComponent<unknown>;
   }
 }
+
 export const createModal = (container: HTMLElement = document.body) => {
   const div = document.createElement('div');
   div.classList.add('blocksuite-overlay');

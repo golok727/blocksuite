@@ -3,6 +3,7 @@ export * from './block-selection.js';
 export * from './drag-indicator.js';
 export * from './file-drop-manager.js';
 export * from './hover/index.js';
+export * from './menu/index.js';
 export * from './menu-divider.js';
 export * from './rich-text/rich-text.js';
 export * from './toast.js';
