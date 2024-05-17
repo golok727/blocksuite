@@ -96,7 +96,7 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
    *
    * See {@link updated}
    */
-  currentLanguage: StrictLanguageInfo = PLAIN_TEXT_LANG_INFO;
+  private _previousLanguage: StrictLanguageInfo = PLAIN_TEXT_LANG_INFO;
   private _highlighter: Highlighter | null = null;
   private async _startHighlight(lang: StrictLanguageInfo) {
     if (this._highlighter) {
@@ -158,7 +158,7 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
     this.clipboardController.hostConnected();
     this.setHighlightOptionsGetter(() => {
       return {
-        lang: this.currentLanguage.id as BundledLanguage,
+        lang: this._previousLanguage.id as BundledLanguage,
         highlighter: this._highlighter,
       };
     });
@@ -333,9 +333,9 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
   }
 
   override updated() {
-    if (this.model.language !== this.currentLanguage.id) {
+    if (this.model.language !== this._previousLanguage.id) {
       const lang = getStandardLanguage(this.model.language);
-      this.currentLanguage = lang ?? PLAIN_TEXT_LANG_INFO;
+      this._previousLanguage = lang ?? PLAIN_TEXT_LANG_INFO;
       if (lang) {
         this._startHighlight(lang).catch(console.error);
       } else {
@@ -381,7 +381,7 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
 
     createLangList({
       abortController,
-      currentLanguage: this.currentLanguage,
+      currentLanguage: this._previousLanguage,
       onSelectLanguage: lang => {
         this.setLang(lang ? lang.id : null);
         abortController.abort();
@@ -400,7 +400,7 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
       style="${this._showLangList ? 'visibility: visible;' : ''}"
     >
       <icon-button
-        class="code-block-button lang-button"
+        class="lang-button"
         data-testid="lang-button"
         width="auto"
         height="24px"

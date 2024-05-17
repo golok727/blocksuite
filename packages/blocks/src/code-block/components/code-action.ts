@@ -3,7 +3,7 @@ import { autoPlacement, offset } from '@floating-ui/dom';
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
-import { popMenu } from '../../_common/components/index.js';
+import { type Menu, popMenu } from '../../_common/components/index.js';
 import { toast } from '../../_common/components/toast.js';
 import {
   AIStarIcon,
@@ -84,6 +84,50 @@ export class CodeActions extends LitElement {
   private _popMoreActions = (e: MouseEvent) => {
     this.style.visibility = 'visible';
     const el = e.currentTarget as HTMLElement;
+    const readonly = this.anchor.readonly;
+
+    const items: Menu[] = [
+      ...((!readonly
+        ? [
+            {
+              type: 'action',
+              name: this.model.wrap ? 'Cancel Wrap' : 'Wrap',
+              icon: this.model.wrap ? CancelWrapIcon : WrapIcon,
+              select: () => {
+                this.anchor.setWrap(!this.model.wrap);
+              },
+            },
+          ]
+        : []) as Menu[]),
+      {
+        type: 'action',
+        name: 'Duplicate',
+        select: () => {
+          this._duplicateCode();
+        },
+        icon: DuplicateIcon,
+      },
+      ...((!readonly
+        ? [
+            {
+              type: 'group',
+              name: '',
+              children: () => [
+                {
+                  type: 'action',
+                  class: 'delete-item',
+                  name: 'Delete',
+                  select: () => {
+                    this.model.doc.deleteBlock(this.model);
+                  },
+                  icon: DeleteIcon,
+                },
+              ],
+            },
+          ]
+        : []) as Menu[]),
+    ];
+
     popMenu(el, {
       placement: 'bottom-end',
       middleware: [
@@ -93,40 +137,7 @@ export class CodeActions extends LitElement {
         }),
       ],
       options: {
-        items: [
-          {
-            type: 'action',
-            name: this.model.wrap ? 'Cancel Wrap' : 'Wrap',
-            icon: this.model.wrap ? CancelWrapIcon : WrapIcon,
-            select: () => {
-              this.anchor.setWrap(!this.model.wrap);
-            },
-          },
-          {
-            type: 'action',
-            name: 'Duplicate',
-            select: () => {
-              this._duplicateCode();
-            },
-            icon: DuplicateIcon,
-          },
-          {
-            type: 'group',
-            name: '',
-            children: () => [
-              {
-                type: 'action',
-                class: 'delete-item',
-                name: 'Delete',
-                select: () => {
-                  if (this.anchor.readonly) return;
-                  this.model.doc.deleteBlock(this.model);
-                },
-                icon: DeleteIcon,
-              },
-            ],
-          },
-        ],
+        items,
         onClose: () => {
           this.style.visibility = '';
         },
@@ -152,7 +163,6 @@ export class CodeActions extends LitElement {
         data-testid="copy-button"
         width="auto"
         height="24px"
-        ?disabled=${readonly}
         @click=${this._copyCode}
       >
         ${CopyIcon}
@@ -167,7 +177,6 @@ export class CodeActions extends LitElement {
         data-testid="comment-button"
         width="auto"
         height="24px"
-        ?disabled=${readonly}
       >
         ${CommentIcon}
 
@@ -179,7 +188,6 @@ export class CodeActions extends LitElement {
         data-testid="caption-button"
         width="auto"
         height="24px"
-        ?disabled=${readonly}
       >
         ${CaptionIcon}
 
@@ -191,7 +199,6 @@ export class CodeActions extends LitElement {
         data-testid="more-button"
         width="auto"
         height="24px"
-        ?disabled=${readonly}
         @click=${this._popMoreActions}
       >
         ${MoreVerticalIcon}
