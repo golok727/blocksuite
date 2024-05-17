@@ -2,6 +2,7 @@ import { ShadowlessElement, WithDisposable } from '@blocksuite/block-std';
 import type {
   ClientRectObject,
   Middleware,
+  Placement,
   ReferenceElement,
   VirtualElement,
 } from '@floating-ui/dom';
@@ -160,12 +161,6 @@ export class MenuComponent<_T> extends WithDisposable(ShadowlessElement) {
 
     .affine-menu-header input:focus {
       border: 1px solid var(--affine-primary-color);
-    }
-
-    .affine-menu-divider {
-      height: 0.5px;
-      background: var(--affine-divider-color);
-      margin: 7px 0;
     }
 
     .affine-menu-action {
@@ -610,9 +605,7 @@ export class MenuComponent<_T> extends WithDisposable(ShadowlessElement) {
                   @input="${this._inputText}"
                 />
               </div>
-              ${showHeaderDivider
-                ? html` <div class="affine-menu-divider"></div>`
-                : null}`
+              ${showHeaderDivider ? html`<menu-divider></menu-divider>` : null}`
           : null}
         <div class="affine-menu-body">
           ${this.selectableItems.length === 0 && this.isSearchMode
@@ -629,9 +622,7 @@ export class MenuComponent<_T> extends WithDisposable(ShadowlessElement) {
             };
             if (menu.type === 'ui') {
               return html`
-                ${divider
-                  ? html` <div class="affine-menu-divider"></div>`
-                  : null}
+                ${divider ? html`<menu-divider></menu-divider>` : null}
                 <div @mouseenter=${mouseEnter}>${menu.render}</div>
               `;
             }
@@ -643,7 +634,7 @@ export class MenuComponent<_T> extends WithDisposable(ShadowlessElement) {
             });
             return html`
               ${divider && !hideDividerWhenHeaderDividerIsShow
-                ? html` <div class="affine-menu-divider"></div>`
+                ? html`<menu-divider></menu-divider>`
                 : null}
               <div
                 class="${classes}"
@@ -712,11 +703,13 @@ export const createPopup = (
   options?: {
     onClose?: () => void;
     middleware?: Array<Middleware | null | undefined | false>;
+    placement?: Placement;
   }
 ) => {
   const modal = createModal();
   autoUpdate(target, content, () => {
     computePosition(target, content, {
+      placement: options?.placement,
       middleware: options?.middleware ?? [shift({ crossAxis: true })],
     })
       .then(({ x, y }) => {
@@ -728,17 +721,6 @@ export const createPopup = (
       .catch(console.error);
   });
   modal.append(content);
-
-  computePosition(target, content, {
-    middleware: options?.middleware ?? [shift({ crossAxis: true })],
-  })
-    .then(({ x, y }) => {
-      Object.assign(content.style, {
-        left: `${x}px`,
-        top: `${y}px`,
-      });
-    })
-    .catch(console.error);
 
   modal.onmousedown = ev => {
     if (ev.target === modal) {
@@ -757,13 +739,16 @@ export const createPopup = (
 
   return () => modal.remove();
 };
+
 export type MenuHandler = {
   close: () => void;
 };
+
 export const popMenu = <T>(
   target: ReferenceElement,
   props: {
     options: MenuOptions;
+    placement?: Placement;
     middleware?: Array<Middleware | null | undefined | false>;
   }
 ): MenuHandler => {

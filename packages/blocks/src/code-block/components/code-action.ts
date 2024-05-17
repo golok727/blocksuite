@@ -1,91 +1,209 @@
-import { type BlockModel, Slice } from '@blocksuite/store';
-import { html, nothing } from 'lit';
-import { ref, type RefOrCallback } from 'lit/directives/ref.js';
+import { Slice } from '@blocksuite/store';
+import { autoPlacement, offset } from '@floating-ui/dom';
+import { css, html, LitElement } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
 
+import { popMenu } from '../../_common/components/index.js';
 import { toast } from '../../_common/components/toast.js';
 import {
+  AIStarIcon,
   CancelWrapIcon,
+  CaptionIcon,
+  CommentIcon,
   CopyIcon,
   DeleteIcon,
+  DuplicateIcon,
+  MoreVerticalIcon,
   WrapIcon,
 } from '../../_common/icons/index.js';
 import type { CodeBlockComponent } from '../code-block.js';
 
-export function CodeActionTemplate({
-  ref: containerRef,
-  model,
-  wrap,
-  toggleWrap,
-  anchor,
-}: {
-  ref?: RefOrCallback;
-  anchor: CodeBlockComponent;
-  model: BlockModel;
-  wrap: boolean;
-  abortController: AbortController;
-  toggleWrap: () => void;
-}) {
-  const page = model.doc;
-  const readonly = page.readonly;
+@customElement('affine-code-actions')
+export class CodeActions extends LitElement {
+  static override styles = css`
+    .code-actions {
+      display: flex;
+      gap: 5px;
+      font-size: var(--affine-font-sm);
+      line-height: var(--affine-line-height);
+    }
 
-  return html`
-    <style>
-      :host {
-        z-index: 1;
-      }
-    </style>
+    .code-action-button {
+      background-color: var(--affine-background-primary-color);
+      box-shadow: var(--affine-shadow-1);
+      display: flex;
+      justify-content: flex-start;
+      gap: 3px;
+      padding: 8px;
+    }
 
-    <div ${ref(containerRef)} class="affine-codeblock-option">
+    .code-action-button.ai {
+      color: var(--affine-primary-color);
+    }
+
+    .code-action-button:hover {
+      background-color: var(--affine-hover-color);
+    }
+  `;
+  @property({ attribute: false })
+  anchor!: CodeBlockComponent;
+
+  // this is a override
+  get model() {
+    return this.anchor.model;
+  }
+
+  private _copyCode = () => {
+    const anchor = this.anchor;
+    const slice = Slice.fromModels(this.model.doc, [this.model]);
+    anchor.std.clipboard
+      .copySlice(slice)
+      .then(() => {
+        toast(anchor.host, 'Copied to clipboard');
+      })
+      .catch(e => {
+        toast(anchor.host, 'Copied failed, something went wrong');
+        console.error(e);
+      });
+  };
+
+  private _duplicateCode = () => {
+    const { text, language, wrap, flavour } = this.model;
+    // FIXME
+    const newProps = { text: text.clone(), language, wrap, flavour };
+    const [codeId] = this.model.doc.addSiblingBlocks(this.model, [newProps]);
+    const editorHost = this.anchor.host;
+
+    editorHost.selection.setGroup('note', [
+      editorHost.selection.create('block', {
+        blockId: codeId,
+      }),
+    ]);
+  };
+
+  private _popMoreActions = (e: MouseEvent) => {
+    this.style.visibility = 'visible';
+    const el = e.currentTarget as HTMLElement;
+    popMenu(el, {
+      placement: 'bottom-end',
+      middleware: [
+        offset(5),
+        autoPlacement({
+          allowedPlacements: ['bottom-start', 'bottom-end'],
+        }),
+      ],
+      options: {
+        items: [
+          {
+            type: 'action',
+            name: this.model.wrap ? 'Cancel Wrap' : 'Wrap',
+            icon: this.model.wrap ? CancelWrapIcon : WrapIcon,
+            select: () => {
+              this.anchor.setWrap(!this.model.wrap);
+            },
+          },
+          {
+            type: 'action',
+            name: 'Duplicate',
+            select: () => {
+              this._duplicateCode();
+            },
+            icon: DuplicateIcon,
+          },
+          {
+            type: 'group',
+            name: '',
+            children: () => [
+              {
+                type: 'action',
+                class: 'delete-item',
+                name: 'Delete',
+                select: () => {
+                  if (this.anchor.readonly) return;
+                  this.model.doc.deleteBlock(this.model);
+                },
+                icon: DeleteIcon,
+              },
+            ],
+          },
+        ],
+        onClose: () => {
+          this.style.visibility = '';
+        },
+      },
+    });
+  };
+
+  override render() {
+    const readonly = this.anchor.readonly;
+    return html` <div contenteditable="false" class="code-actions">
       <icon-button
-        size="32px"
+        class="code-action-button ai"
+        data-testid="ask-ai-button"
+        width="auto"
+        height="24px"
+        ?disabled=${readonly}
+      >
+        ${AIStarIcon} Ask AI
+      </icon-button>
+
+      <icon-button
+        class="code-action-button"
         data-testid="copy-button"
-        @click=${() => {
-          const slice = Slice.fromModels(model.doc, [model]);
-          anchor.std.clipboard
-            .copySlice(slice)
-            .then(() => {
-              toast(anchor.host, 'Copied to clipboard');
-            })
-            .catch(e => {
-              toast(anchor.host, 'Copied failed, something went wrong');
-              console.error(e);
-            });
-        }}
+        width="auto"
+        height="24px"
+        ?disabled=${readonly}
+        @click=${this._copyCode}
       >
         ${CopyIcon}
-        <affine-tooltip tip-position="right" .offset=${12}
-          >Copy to Clipboard</affine-tooltip
+
+        <affine-tooltip tip-position="top" .offset=${5}
+          >Copy Code</affine-tooltip
         >
       </icon-button>
-      ${readonly
-        ? nothing
-        : html`<icon-button
-            size="32px"
-            data-testid="wrap-button"
-            ?active=${wrap}
-            @click=${toggleWrap}
-          >
-            ${wrap ? CancelWrapIcon : WrapIcon}
-            <affine-tooltip tip-position="right" .offset=${12}
-              >${wrap ? 'Cancel wrap' : 'Wrap code'}</affine-tooltip
-            >
-          </icon-button>`}
-      ${readonly
-        ? nothing
-        : html`<icon-button
-            size="32px"
-            data-testid="delete-button"
-            class="delete-code-button"
-            @click=${() => {
-              if (readonly) return;
-              model.doc.deleteBlock(model);
-            }}
-          >
-            ${DeleteIcon}
-            <affine-tooltip tip-position="right" .offset=${12}
-              >Delete</affine-tooltip
-            >
-          </icon-button>`}
-    </div>
-  `;
+
+      <icon-button
+        class="code-action-button"
+        data-testid="comment-button"
+        width="auto"
+        height="24px"
+        ?disabled=${readonly}
+      >
+        ${CommentIcon}
+
+        <affine-tooltip tip-position="top" .offset=${5}>Comment</affine-tooltip>
+      </icon-button>
+
+      <icon-button
+        class="code-action-button"
+        data-testid="caption-button"
+        width="auto"
+        height="24px"
+        ?disabled=${readonly}
+      >
+        ${CaptionIcon}
+
+        <affine-tooltip tip-position="top" .offset=${5}>Caption</affine-tooltip>
+      </icon-button>
+
+      <icon-button
+        class="code-action-button"
+        data-testid="more-button"
+        width="auto"
+        height="24px"
+        ?disabled=${readonly}
+        @click=${this._popMoreActions}
+      >
+        ${MoreVerticalIcon}
+
+        <affine-tooltip tip-position="top" .offset=${5}>More</affine-tooltip>
+      </icon-button>
+    </div>`;
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'affine-code-actions': CodeActions;
+  }
 }

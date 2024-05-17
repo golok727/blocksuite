@@ -30,38 +30,32 @@ export const codeBlockStyles = css`
     left: 5px;
   }
 
-  .affine-code-block-container .code-actions-wrapper {
-    display: flex;
-    gap: 5px;
+  affine-code-actions {
     position: absolute;
-    font-size: var(--affine-font-sm);
-    line-height: var(--affine-line-height);
     top: 5px;
     right: 5px;
   }
 
   .affine-code-block-container > .lang-list-wrapper,
-  .affine-code-block-container > .code-actions-wrapper {
+  .affine-code-block-container > affine-code-actions {
     visibility: hidden;
   }
 
   .affine-code-block-container:hover > .lang-list-wrapper,
-  .affine-code-block-container:hover > .code-actions-wrapper {
+  .affine-code-block-container:hover > affine-code-actions {
     visibility: visible;
   }
 
-  .code-block-button {
+  .affine-code-block-container > .lang-list-wrapper > .lang-button {
     background-color: var(--affine-background-primary-color);
+    display: flex;
+    justify-content: flex-start;
     padding: 8px;
     box-shadow: var(--affine-shadow-1);
   }
-  .code-block-button:hover {
-    background-color: var(--affine-hover-color);
-  }
 
-  .code-block-button.lang-button {
-    display: flex;
-    justify-content: flex-start;
+  .affine-code-block-container > .lang-list-wrapper > .lang-button:hover {
+    background-color: var(--affine-hover-color);
   }
 
   .affine-code-block-container rich-text {

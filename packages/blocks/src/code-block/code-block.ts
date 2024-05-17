@@ -1,5 +1,6 @@
 import '../_common/components/rich-text/rich-text.js';
 import './components/lang-list.js';
+import './components/code-action.js';
 
 import { BlockElement, getInlineRangeProvider } from '@blocksuite/block-std';
 import { assertExists } from '@blocksuite/global/utils';
@@ -18,14 +19,7 @@ import { z } from 'zod';
 
 import { bindContainerHotkey } from '../_common/components/rich-text/keymap/index.js';
 import type { RichText } from '../_common/components/rich-text/rich-text.js';
-import {
-  AIStarIcon,
-  ArrowDownIcon,
-  CaptionIcon,
-  CommentIcon,
-  MoreVerticalIcon,
-} from '../_common/icons/index.js';
-import { CopyIcon } from '../_common/icons/index.js';
+import { ArrowDownIcon } from '../_common/icons/index.js';
 import { ThemeObserver } from '../_common/theme/theme-observer.js';
 import { getViewportElement } from '../_common/utils/query.js';
 import type { NoteBlockComponent } from '../note-block/note-block.js';
@@ -396,62 +390,6 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
     });
   }
 
-  private _codeActionsTemplate() {
-    return html`
-      <div contenteditable="false" class="code-actions-wrapper">
-        <icon-button
-          class="code-block-button code-action ai"
-          data-testid="ask-ai-button"
-          width="auto"
-          height="24px"
-          ?disabled=${this.readonly}
-        >
-          ${AIStarIcon} Ask AI
-        </icon-button>
-
-        <icon-button
-          class="code-block-button code-action"
-          data-testid="copy-button"
-          width="auto"
-          height="24px"
-          ?disabled=${this.readonly}
-        >
-          ${CopyIcon}
-        </icon-button>
-
-        <icon-button
-          class="code-block-button code-action"
-          data-testid="comment-button"
-          width="auto"
-          height="24px"
-          ?disabled=${this.readonly}
-        >
-          ${CommentIcon}
-        </icon-button>
-
-        <icon-button
-          class="code-block-button code-action"
-          data-testid="caption-button"
-          width="auto"
-          height="24px"
-          ?disabled=${this.readonly}
-        >
-          ${CaptionIcon}
-        </icon-button>
-
-        <icon-button
-          class="code-block-button code-action"
-          data-testid="more-button"
-          width="auto"
-          height="24px"
-          ?disabled=${this.readonly}
-        >
-          ${MoreVerticalIcon}
-        </icon-button>
-      </div>
-    `;
-  }
-
   private _curLanguageButtonTemplate() {
     const curLanguage =
       getStandardLanguage(this.model.language) ?? PLAIN_TEXT_LANG_INFO;
@@ -498,7 +436,10 @@ export class CodeBlockComponent extends BlockElement<CodeBlockModel> {
           wrap: this.model.wrap,
         })}
       >
-        ${this._curLanguageButtonTemplate()} ${this._codeActionsTemplate()}
+        ${this._curLanguageButtonTemplate()}
+
+        <affine-code-actions .anchor=${this}></affine-code-actions>
+
         <div class="rich-text-container">
           <div contenteditable="false" id="line-numbers"></div>
           <rich-text
